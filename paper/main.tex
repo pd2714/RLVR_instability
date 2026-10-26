@@ -1,0 +1,57 @@
+\documentclass{article}
+
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+% Official ICML 2026 style if present; otherwise an ICML-like fallback.
+\IfFileExists{icml2026.sty}{\usepackage{icml2026}}{\usepackage{icml_fallback}}
+
+\usepackage{amsmath,amssymb,mathtools,amsthm}
+\usepackage[capitalize,noabbrev]{cleveref}
+\theoremstyle{plain}
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+\setlength{\emergencystretch}{1.5em}
+
+\icmltitlerunning{Collective Dynamics of Self-Reinforcement in Unsupervised RLVR}
+
+\begin{document}
+
+\twocolumn[
+\icmltitle{Collective Dynamics of Self-Reinforcement:\\
+How Cross-Task Coupling Drives Policy Collapse in Unsupervised RLVR}
+
+\icmlsetsymbol{equal}{*}
+\begin{icmlauthorlist}
+\icmlauthor{Peize Ding}{cu}
+\end{icmlauthorlist}
+\icmlaffiliation{cu}{Columbia University, New York, NY, USA}
+\icmlcorrespondingauthor{Peize Ding}{pd2714@columbia.edu}
+\icmlkeywords{reinforcement learning, RLVR, label-free RL, test-time RL, collapse, statistical physics}
+
+\vskip 0.3in
+]
+
+\printAffiliationsAndNotice{}
+
+\input{sec_abstract}
+\input{sec_intro}
+\input{sec_theory}
+\input{sec_experiments}
+\input{sec_discussion}
+
+\bibliography{references}
+\IfFileExists{icml2026.bst}{\bibliographystyle{icml2026}}{\bibliographystyle{plainnat}}
+
+\newpage
+\appendix
+\crefalias{section}{appendix}
+\crefalias{subsection}{appendix}
+\onecolumn
+\input{sec_appendix}
+
+\end{document}

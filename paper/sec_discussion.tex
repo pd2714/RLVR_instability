@@ -1,0 +1,33 @@
+% ---------------------------------------------------------------------------
+\section{Discussion}
+\label{sec:discussion}
+
+We close by summarizing the mechanism, drawing practical implications and stating the limitations of our analysis.
+
+\paragraph{Why adding data destabilizes self-rewarded RL.}
+Our account of the dataset-size threshold of \citet{he2026urlvr} is a race.
+Each problem-specific degree of freedom receives a $1/N$ share of the learning signal, while shared directions receive all of it.
+As long as many problems are undecided, the shared directions are dynamically unstable, and the longer it takes to sharpen the individual problems (larger $N$), the more a shared bias is amplified.
+The resulting threshold depends on the coupling ($\propto\lambda^{-2}$) and on the initial confidence profile through a single number $G$, and only logarithmically on the batch size and the noise.
+That higher-entropy base models collapse faster \citep{he2026urlvr} follows directly, because they have more problems in the unstable window and hence larger $G$.
+Our results also make precise the observation of \citet{he2026urlvr} that entropy is a \emph{consequence} of sharpening rather than its cause. In the theory, what matters is the sign of the population-averaged slope $\langle F'\rangle$, not the entropy itself.
+
+\paragraph{Practical implications.}
+Beyond explaining the threshold, the theory suggests concrete diagnostics and levers.
+(1)~\emph{Measure before training.} The index $\langle F'(z_i)\rangle$ over the training set and the kernel ratios $k_u/k_d'$ and $k_s/k_d'$ can be estimated on the initial model from samples and per-example gradients. In the solvable model they predict $N_c$ (\cref{sec:sims}). In a feature-learning network the initial kernel gives a lower bound on the risk, because training tends to erode the protective coupling (\cref{tab:drift}).
+(2)~\emph{Reduce shared coupling.} Anything that removes answer-independent shared directions lowers $\lambda$. Our antisymmetric readout is an extreme example (\cref{fig:nn}c), and answer-format normalization or freezing output biases are milder ones.
+(3)~\emph{Damp the shared modes directly.} A marginal-entropy bonus above $\beta_c\approx\tfrac12$ (\cref{eq:beta}) stabilizes the uniform mode without slowing per-problem sharpening (\cref{fig:hetero}c, \cref{fig:nnremedy}). It biases the answer marginals toward balance, which is inappropriate when the true answer distribution is very skewed. In networks it must be complemented by damping the other collective kernel modes that are not aligned with current predictions (\cref{app:nnremedy}).
+(4)~\emph{Curriculum by confidence.} Training first on problems on which the model is already confident ($|z|>z^\star$) or in small chunks keeps $\lambda^2NG$ below threshold. This follows from P4 and \cref{eq:Lambda}, but we have not tested it.
+Larger groups $K$ narrow the unstable window but only shift $N_c$ moderately (\cref{tab:window}, \cref{fig:robust}a).
+
+\paragraph{Limitations.}
+These implications rest on simplifications that we now make explicit.
+We model answer-level policies and linearize the coupling between problems. Real language models have many structured shared directions that change during training.
+In the Transformer, the kernel drifts (\cref{tab:drift}): the protective coupling erodes and the self-kernel can grow by two orders of magnitude, so predictions from the initial kernel underestimate the risk. The network also has collective modes besides the uniform one, and damping only the uniform mode does not prevent convergence to an arbitrary balanced rule.
+$\Lambda_c$ is calibrated on the toy model and depends logarithmically on the noise seed.
+Because of compute limits we did not test pretrained language models. Measuring $\langle F'\rangle$ and the kernel ratios on a small pretrained language model, and testing whether they predict the dataset-size threshold of \citet{he2026urlvr}, is the most important next step.
+
+\paragraph{Conclusion.}
+Unsupervised RLVR is a many-body system: the problems interact through shared parameters.
+Majority-vote self-reinforcement makes the balanced state, in which different problems keep different answers, a paramagnet that becomes unstable whenever too many problems are undecided at once.
+This single mechanism explains why collapse appears only above a critical number of problems, predicts how that number scales with coupling, confidence and batch size, identifies a protective counterpart in generalizing (prediction-aligned) coupling, and suggests a principled remedy.

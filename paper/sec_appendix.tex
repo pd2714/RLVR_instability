@@ -1,0 +1,164 @@
+\input{sec_appendix_theory}
+
+% ---------------------------------------------------------------------------
+\section{Further Results for the Solvable Model}
+\label{app:simdetails}
+This section collects the numbers behind \cref{sec:sims}.
+
+\subsection{Fitted critical sizes (P1, P2)}
+\label{app:fits}
+The default settings are REINFORCE, $K{=}3$, $B{=}32$, SGD with step $\eta{=}4$ and 300 epochs, so each visit changes $u_i$ by $(\eta/B)\,\hat g_i=0.125\,\hat g_i$. Each configuration is run with 16--24 seeds.
+In collapsing runs the self-assessed reward goes to $0.999$ while accuracy falls from $0.80$ to $0.50$ (\cref{fig:mechanism}b). Near $N_c$ the outcome is fixed within the first ${\sim}100$ epochs (\cref{fig:mechanism}c), and the probability of collapse rises from $0$ to $1$ within a factor of about $3$--$4$ in $N$ (\cref{fig:scaling}a).
+Varying only the coupling, $\lambda\in[0.035,0.28]$, moves the critical size from $N_c=5750$ to $N_c=60$, and a power-law fit gives $N_c\propto\lambda^{-2.22}$ (\cref{fig:scaling}c).
+Varying only the initial confidence, $a\in[0.15,1.1]$, moves $N_c$ from $189$ to $8740$ (\cref{fig:scaling}d).
+The fitted critical amplification is $\Lambda_c=2.64$, and the twelve sweeps (seven couplings and five confidences) give values in $[2.1,3.6]$ (\cref{fig:scaling}b).
+
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{../figures/fig_batch_stable.pdf}
+\caption{\textbf{Batch size and long training.} (a)~$N_c$ against batch size, with a fixed step (blue) and with linear step scaling (orange). The dashed line is the logarithmic prediction anchored at $B{=}32$. (b)~Final order parameter after $10\times$ longer training for confident initial models ($a>z^\star$) at values of $\lambda^2N$ up to $1474$. Uncertain models collapse for $\lambda^2N\gtrsim5$. (c)~Order-parameter trajectories: confident models stay balanced, and sub-critical uncertain models remain balanced after sharpening.}
+\label{fig:batch}
+\end{figure}
+
+\subsection{Batch size enters logarithmically (P3)}
+\label{app:batch}
+The remaining input to \cref{eq:Nc} is the noise seed $\delta$, which the batch size controls.
+With a fixed step size, a $16\times$ change in batch size ($B=8\to128$) changes $N_c$ by only $2.2\times$ ($355\to765$, \cref{fig:batch}a), roughly linearly in $\ln B$ as predicted. The crude seed estimate in \cref{app:derivations} gives a slope of $0.5/(\lambda^2G)$ per unit $\ln B$; we measure about $1.5\times$ that.
+For $B=512$ every tested size ($N\ge2B$) already collapses, consistent with $N_c<1024$.
+Under the linear scaling rule $\eta\propto B$, which keeps the noise per sample fixed, $N_c$ is flat ($521$--$572$ for $B=8$--$128$, orange in \cref{fig:batch}a), again as predicted by \cref{app:seed}.
+At $B=512$ with linear scaling the step on the shared parameter ($\eta\lambda^2=0.64$) is too large for the small-step approximation, and all runs collapse.
+For comparison, a $16\times$ change in $\lambda^{-2}$ moves $N_c$ by $18$--$26\times$ (\cref{fig:scaling}c).
+
+\subsection{Confident models are stable, not merely slow (P4)}
+\label{app:stable}
+The last prediction concerns models that start outside the unstable window, which the theory says are stable rather than merely slow to collapse.
+To distinguish stability from slow dynamics, we train confident models, $a\in\{1.4,1.6,2.0\}>z^\star$, at couplings and sizes far beyond the uncertain-model threshold: up to $\lambda^2N=1474$, where an $a=0.5$ population would reach $\Lambda\approx760$.
+For $N=1024$ and $4096$ we train $10\times$ longer (3000 epochs), and for $N=16384$ $2\times$ longer.
+Across all 18 configurations (16 seeds each) \emph{not a single problem flips} its answer. The shared shift stays at $|\lambda v|\le0.013$, and accuracy stays at its initial $0.80$ (\cref{fig:batch}b,c).
+Sub-critical uncertain models ($a=0.5$, $N\le256$, $\lambda^2N\le2.6$) also remain uncollapsed under $10\times$ longer training ($\Phi\le0.1$ on average, \cref{fig:batch}c).
+Once the population has left the unstable window, the shared mode is damped, so training longer does not lead to collapse.
+
+\subsection{Heterogeneity, feature coupling and remedy}
+\label{app:hetero}
+\paragraph{Heterogeneous confidence.}
+We draw $|z_i(0)|$ from seven distributions: uniform on $[0,1]$, $[0,2]$, $[0,3]$ and $[0.5,2.5]$; exponential with mean $0.7$; and two-point mixtures with $30\%$ or $60\%$ of problems at $0.3$ and the rest at $2.0$.
+For each we compute $G[\rho_0]$ from the initial distribution alone, using its definition in \cref{sec:general}.
+The measured $N_c$ spans $455$--$14{,}700$, and $\Lambda_c\in[2.0,2.8]$ throughout (\cref{fig:hetero}a).
+In the 30\% mixture most problems are confident, yet the population still collapses, at $N_c\approx14{,}700$, consistent with its small but positive $G=0.014$.
+For the uniform $[0.5,2.5]$ population, $\langle F'\rangle<0$ from the start, so $G=0$, and no run collapses even at $N=24{,}000$.
+
+\paragraph{Feature coupling.}
+We add a coupling $z_i\mathrel{+}=\mu s_iw$ aligned with each problem's initial preference $s_i$. The kernel theory (\cref{eq:kernel}) predicts $N_c=1/(\lambda^2G/\Lambda_c-\mu^2)$, which diverges at $\mu_c=\sqrt{\lambda^2G/\Lambda_c}$. With $\lambda=0.1$, $G(0.5)=0.514$ and $\Lambda_c=2.64$ this gives $\mu_c=0.044$.
+The transition broadens near the divergence (\cref{fig:hetero}b). For $\mu=0.04$ only $44\%$ of runs collapse even at $N=32768$, and for $\mu\ge0.05$ no run collapses at any $N$ up to $32768$.
+
+\paragraph{Marginal-entropy remedy.}
+\Cref{eq:beta} gives $\beta_c(0.2)=0.49$ and $\beta_c(0.5)=0.44$.
+At $\beta=0.5$ and above, no run collapses for any $N\le8192$ or either $a$, and accuracy stays at its sharpening-only value ($0.78$ for $a=0.5$). At $\beta=0.25$, runs survive at $N=512$ but collapse at $N=8192$ (\cref{fig:hetero}c).
+At $\beta\ge\beta_c$ the final confidence $\langle|z|\rangle$ is the same as in sub-critical runs without the bonus.
+
+\input{sec_appendix_robust}
+
+\section{Transformer: Detailed Results}
+\label{app:nndetails}
+This section collects the numbers behind \cref{sec:nn}.
+
+\subsection{Models and conditions}
+Ties $x_1+x_2+x_3=x_4+x_5+x_6$ are excluded, so the labels are balanced.
+The plain model has $k_u/k_d'=0.40$--$0.70$ and $k_s/k_d'\approx0.05$. We use base 90 and base 120, with $82\%$ and $89\%$ held-out accuracy.
+The antisymmetric model has $k_u/k_d'<0.002$ and $k_s/k_d'=0.16$--$0.45$. We use base 10 and base 20, with $84\%$ and $92\%$ held-out accuracy.
+The added coupling takes the values $\rho_b\in\{0,0.3,1,3\}$; for example, $\rho_b=1$ gives $k_u/k_d'\approx1.2$--$1.5$.
+The plain models are run at $\tau\in\{1,2,3\}$, and the antisymmetric ones at $\tau\in\{1,2\}$ and every $\rho_b$, which gives $6+16=22$ conditions (\cref{tab:conditions}).
+Each condition is run at 7 values of $N$ (16--1024 for the plain model, 32--2048 for the antisymmetric one) with 6 seeds, for 924 RL runs in total.
+The bare threshold uses $\Lambda_c=2.64$ from the toy model (\cref{fig:scaling}b).
+
+\subsection{Collapse counts}
+In collapsing runs the majority-vote reward reaches $\ge0.999$ while held-out accuracy falls from $0.82$ to $0.50$ (\cref{fig:nn}a). The run that does not collapse in \cref{fig:nn}a is base 120 at $\tau=1$.
+Without added coupling, the antisymmetric network collapses in $0$ of $168$ runs, across both bases, both temperatures and every $N$ up to $2048$. This includes base 10 at $\tau=2$, with $G=1.12$. With $\rho_b\ge1$, $335$ of $336$ runs collapse.
+For the plain base 90 at $\tau=1$, collapse rises from $0/6$ at $N=16$ to $6/6$ for $N\ge512$. Its shared coupling $k_u/k_d'=0.70$ is far larger than $\lambda^2=0.01$ in the toy-model runs of \cref{fig:mechanism}.
+Across temperatures $\tau=1,2,3$, base 90 collapses in $29$, $34$ and $37$ of 42 runs, and base 120 in $17$, $35$ and $38$.
+At very small $N$ the finite-sample imbalance of the initial answers (up to $\Phi_0=0.38$ for 16--64 problems) acts as a large seed $\delta$, which produces some collapse even at small $N$.
+
+\subsection{Scoring the predictions}
+We score each \emph{cell}, a condition at one training-set size. There are $22\times7=154$ cells of 6 runs each. A cell's observed outcome is the fraction of its runs that collapse, and a predictor agrees with it when both lie on the same side of $\tfrac12$.
+The kernel-calibrated surrogate agrees in $71\%$ of cells (Pearson $r=0.63$), the deterministic kernel mean-field in $63\%$, and the bare threshold $\Lambda(N)>\Lambda_c$ in $58\%$. Far from threshold ($\rho_b=0$ or $\rho_b\ge1$) the surrogate agrees in $86\%$ of cells.
+In $43$ cells the network collapses although the surrogate predicts stability, and in only $1$ cell the reverse.
+Thirty of the 43 are antisymmetric cells in which the added shared coupling is at most about three times the protective one ($k_u\lesssim3k_s$: $\rho_b=0.3$, and base 20 at $\rho_b=1$).
+Eight are the confident plain networks at $\tau=1$, where $G\le0.025$ and the surrogate predicts little collapse. Base 90 nevertheless collapses in most runs for $N\ge64$, and base 120 at some sizes but not at others.
+The remaining five are base 120 at $\tau=2$ (four cells) and $\tau=3$ (one cell), where the network keeps collapsing at large $N$ but the surrogate predicts stability.
+For base 90 at $\tau=2$ and $3$ the surrogate matches the observed collapse at large $N$. At small $N$ it overpredicts collapse, because the measured coupling already places $\Lambda$ near or above $\Lambda_c$ at $N=16$; the one cell predicted to collapse that does not is base 90 at $\tau=2$, $N=16$.
+
+\subsection{Kernel drift}
+\label{app:kerneldrift}
+The one-sided errors of the parameter-free predictions have a simple cause: the kernel changes during training (\cref{tab:drift}).
+In the antisymmetric base-20 network, the protective coupling $k_s/k_d'$ drops from $0.42$ to $0.07$ within the first epoch, while the shared coupling $k_u/k_d'$ only halves, so the saturation level $Gk_u/k_s$ of $\Lambda$ roughly triples.
+In the antisymmetric base-10 network the self-kernel $k_d$ grows by $28$--$245\times$ in a few epochs, so the effective step leaves the small-step regime altogether.
+The plain networks drift much less: $k_d$ changes by at most $1.6\times$ over the first 4 epochs and $2.2\times$ over 8.
+Feature learning thus erodes exactly the protection that the static theory relies on. A predictor for strongly feature-learning networks must track the kernel, and the initial kernel gives a lower bound on the risk.
+
+\subsection{Remedy and the next collective mode}
+\label{app:nnremedy}
+We test the marginal-entropy remedy of \cref{sec:remedy} on the plain base-90 network at $\tau=2$, which collapses at every $N$ without intervention (\cref{fig:nnremedy}).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.6\textwidth]{../figures/fig_nn_remedy.pdf}
+\caption{\textbf{Marginal-entropy bonus on the plain base-90 Transformer at $\tau=2$.} Lines: mean over 4 seeds; dots: individual seeds. The dashed line marks $\beta=\tfrac12$, above which the theory predicts stability (\cref{eq:beta}). (a)~Final order parameter $\Phi$ on the training problems; runs above the dotted line count as collapsed. The bonus removes collapse for $\beta\ge\tfrac12$. (b)~Held-out accuracy stays near chance at every $\beta$, far below the base model's initial accuracy (dotted, top).}
+\label{fig:nnremedy}
+\end{figure}
+
+Without the bonus $7/8$ runs collapse, at $\beta=0.25$ $2/8$ do, and for $\beta\in\{0.5,1,2\}$ none of 24 do, matching the predicted threshold $\beta_c\le\tfrac12$ of \cref{eq:beta}.
+The bonus does not, however, rescue accuracy. Remedied runs end with balanced answers ($\Phi\approx0.1$) and high confidence ($\langle|z|\rangle\approx7$), but at chance accuracy, and the learned labelling agrees with no simple input feature better than $58\%$.
+The kernel explains this as well. Besides the uniform mode (eigenvalue $1.45\times10^4$), the initial kernel has several collective modes orthogonal to both the uniform direction and the current predictions, with eigenvalues $5.1\times10^3$, $2.5\times10^3$, $2.3\times10^3,\dots$, all far above the self-kernel $k_d=94$.
+\Cref{prop:instab} applies to any such mode: when the uniform mode is damped, the next one takes over, and the network collapses onto a balanced but arbitrary rule.
+A complete remedy must therefore damp every collective direction not aligned with the current predictions, not only the uniform one. Our analysis identifies these directions as the leading eigenvectors of the kernel restricted to that subspace.
+
+\input{tab_conditions}
+\input{tab_nn}
+
+\section{Experimental Details}
+\label{app:details}
+
+\paragraph{Solvable model.}
+All simulations use the vectorized simulator in \texttt{src/rlvr\_collapse/sim.py}, which runs 16--24 independent seeds in parallel.
+Each optimizer step draws $B$ problems without replacement (a fresh permutation each epoch), samples $K$ answers per problem from $\sigma(z_i)$ (or the softmax for $M>2$), breaks majority ties uniformly at random, and applies the chosen advantage.
+Each step moves $u_i$ by $\eta\hat g_i/B$ and $v$ by $\eta\lambda\sum_i\hat g_i/B$, where $\hat g_i$ is the per-problem estimate of $F(z_i)$ (\cref{sec:theory}).
+\Cref{tab:hparams} lists the settings for every sweep.
+$N_c$ is obtained by maximum-likelihood fitting of $P(\text{collapse})=\sigma(k(\ln N-\ln N_c))$ to the binomial counts.
+The mean-field and theory computations are in \texttt{theory.py} and \texttt{multiclass.py}.
+
+\begin{table}[h]
+\centering\small
+\caption{Simulation settings. Unless listed, $K{=}3$, REINFORCE, $B{=}32$, SGD step $\eta{=}4$, 300 epochs, 24 seeds, and $80\%$ of initial majorities correct.}
+\label{tab:hparams}
+\begin{tabular}{lll}
+\toprule
+Sweep & Varied & Notes \\
+\midrule
+coupling & $\lambda\in\{0.035,\dots,0.28\}$, 9 values of $N$ each & $a=0.5$ \\
+confidence & $a\in\{0.15,0.3,0.5,0.8,1.1,1.25\}$ & $\lambda=0.1$, $N\le32768$ \\
+batch, fixed step & $B\in\{8,16,32,128,512\}$ & epochs $=300B/32$ (equal step count) \\
+batch, linear scaling & $B\in\{8,\dots,512\}$ & $\eta=4B/32$, 300 epochs \\
+long training & $a\in\{1.4,1.6,2.0\}$, $\lambda\in\{0.1,0.3\}$ & 3000 epochs (600 at $N=16384$); 16 seeds \\
+heterogeneous & 7 initial distributions & $\lambda=0.1$ \\
+feature coupling & $\mu\in\{0,\dots,0.07\}$, $N\in[128,32768]$ & $\lambda=0.1$, 16 seeds \\
+remedy & $\beta\in\{0,0.1,0.25,0.5,1,2\}$, $a\in\{0.2,0.5\}$ & $\lambda=0.1$, 16 seeds \\
+GRPO / $K$ & $K\in\{3,5,8,16\}$; GRPO, mean baseline, REINFORCE & step set so that $\eta F^\star_K\in[0.38,0.48]$ \\
+many answers & $(M,K)\in\{(3,3),(4,5),(6,5)\}$ & softmax logits, vector $v$ \\
+Adam & $\lambda\in\{0.2,\dots,1.0\}$, $N\in[64,16384]$ & lr $0.01$, $(\beta_1,\beta_2)=(0.9,0.999)$, 16 seeds \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Transformer.}
+Embedding width 64, 2 pre-LN encoder layers, 4 heads, MLP width 256, no dropout, a learned positional embedding and a CLS token. The readout is a bias-free linear map to the logit difference, plus the optional scaled scalar bias $\lambda_bb$.
+Supervised warm-up uses Adam (lr $10^{-3}$, batch 128) on fresh labeled samples.
+RL uses the first $N$ problems of a fixed pool of 8192 unlabeled problems, plain SGD with step $0.125B/k_d$ (where $k_d$ is the mean self-kernel at the given temperature), $B=16$, $K=3$, REINFORCE with majority-vote rewards, and 100 epochs.
+Accuracy is measured on 2000 held-out problems.
+Per-example gradients for the kernel statistics are computed with \texttt{torch.func} on 384 pool problems.
+The amplification $G$ is computed from the initial logits of 2048 pool problems.
+A run counts as collapsed if $|\langle\mathrm{sign}\,z\rangle|>0.5$ on its training problems at the end of training.
+
+\paragraph{Compute.}
+All experiments ran on a single Apple M4 Pro CPU (14 cores).
+The full solvable-model study takes under an hour, and the 924 Transformer runs take about 40 minutes.

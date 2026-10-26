@@ -1,0 +1,193 @@
+% ---------------------------------------------------------------------------
+\section{Single-Problem Self-Reinforcement}
+\label{sec:single}
+
+We start with one problem in isolation. Its sharpening drift $F$, and in particular the slope $F'$, are the only single-problem ingredients that the collective theory of \cref{sec:theory} needs.
+
+\paragraph{Policy, reward and drift.}
+We abstract a problem $x$ by the distribution of its \emph{final answers}.
+In the binary case the two answers are $+$ and $-$, and the policy is $\pi(+\mid x)=p=\sigma(z)$, $\pi(-\mid x)=1-p$, with logit $z$.
+For each problem the learner samples $K$ answers $y_1,\dots,y_K$, forms the majority $\hat a$ (ties broken uniformly at random), and assigns $r_j=\mathbf 1[y_j=\hat a]$ \citep{ttrl}.
+The per-sample policy-gradient estimate is $\hat g=\frac1K\sum_j A_j\,\partial_z\log\pi(y_j)$, with $\partial_z\log\pi(+)=1-p$, $\partial_z\log\pi(-)=-p$, and advantage $A_j=r_j$ (REINFORCE; \citealp{williams1992}), $A_j=r_j-\bar r$ (group-mean baseline), or $A_j=(r_j-\bar r)/\mathrm{std}(r)$ (GRPO; \citealp{deepseekmath}).
+
+The estimate $\hat g$ averages over the $K$ answers drawn for a single update, so it is still random: each update draws fresh answers. Its expectation over the draw of $y_1,\dots,y_K\sim\pi$ and the tie-breaking is the mean update on the logit, $F(z)=\mathbb E[\hat g]$.
+Because $\hat g$ depends on the samples only through the number $k$ of $+$ answers, $F$ can be computed exactly by summing over $k\sim\mathrm{Bin}(K,p)$ for any $K$ and estimator (\cref{app:drift}).
+For REINFORCE it has a simple form. By exchangeability $F=\mathbb E[r_1\,\partial_z\log\pi(y_1)]$, so $F(z)=p(1-p)\big(\Pr[\hat a=+\mid y_1=+]-\Pr[\hat a=-\mid y_1=-]\big)$.
+For odd $K=2m+1$ the bracket equals $\Pr[X>m]-\Pr[X<m]$, where $X\sim\mathrm{Bin}(2m,p)$ counts the $+$ answers among the other $K-1$ samples.
+Our main experiments use $K=3$. There the bracket is $p^2-(1-p)^2=2p-1$, which gives
+\begin{equation}
+  F(z)=p(1-p)(2p-1),\qquad p=\sigma(z).
+  \label{eq:F}
+\end{equation}
+A problem trained on its own with step $\eta$ therefore follows, on average, the \emph{sharpening equation}
+\begin{equation}
+  \dot z=\eta\,F(z),
+  \label{eq:sharp}
+\end{equation}
+where time counts updates.
+For every $K\ge3$ and all three estimators, $F$ is odd, positive for $z>0$, and vanishes at $z=0$ and as $|z|\to\infty$. Under \cref{eq:sharp} every problem is therefore pushed toward its current majority answer and then freezes.
+This is the single-problem sharpening behaviour characterized by \citet{huang2025sharpening} and \citet{he2026urlvr}.
+
+\paragraph{The unstable window.}
+The drift $F$ describes how a problem sharpens on its own. Once problems share parameters, they also feel a common push, and how a problem responds to that push is set by the \emph{slope} $F'(z)$. This slope is the quantity that controls the collective behaviour.
+For $K=3$, differentiating \cref{eq:F} and writing $q=p-\tfrac12$ gives $F'(z)=p(1-p)\,(\tfrac12-6q^2)$. Setting $6q^2=\tfrac12$ locates the zero of $F'$, so
+\begin{equation}
+  F'(z)>0 \iff |z|<z^\star=\ln(2+\sqrt3)\approx1.317,
+  \label{eq:window}
+\end{equation}
+that is, $0.21<p<0.79$. Evaluating \cref{eq:F} at the edge gives $F^\star=F(z^\star)=1/(6\sqrt3)\approx0.096$.
+Inside this window a problem's response to a small common push grows with the push. Outside the window it shrinks (\cref{fig:mechanism}a).
+
+So far we have used REINFORCE with $K=3$. We now check how $F$ changes with the estimator and the group size.
+For $K=3$ only the $2{:}1$ splits carry signal, and they all have the same reward standard deviation. The mean baseline therefore gives exactly $\tfrac23F$ and GRPO gives exactly $\sqrt2F$ (\cref{app:drift}): \emph{for $K=3$, std-normalization changes the time scale but not the shape of $F$}.
+For larger $K$ the shapes differ. Each $K$ and estimator then has its own exact drift $F_K$, window edge $z^\star_K$ (where $F_K'=0$) and edge drift $F^\star_K=F_K(z^\star_K)$.
+\Cref{tab:window} (Appendix) lists $z^\star_K$, which does not increase with $K$, so larger groups narrow the unstable window.
+The analysis below uses $F$ only through the sign of $F'$ and the ratio $F^\star/F$, so it holds for any $K$ and estimator once $F$, $z^\star$ and $F^\star$ are replaced by $F_K$, $z^\star_K$ and $F^\star_K$. We quote $K=3$ values and drop the subscript unless stated otherwise.
+
+
+
+% ---------------------------------------------------------------------------
+\section{Collective Theory}
+\label{sec:theory}
+
+We now couple many problems through shared parameters. We introduce a minimal model, show that the balanced state can be unstable, derive the critical number of problems from a race between two time scales, and extend the result to heterogeneous confidence and many answers. We then give a kernel form of the theory for neural networks and derive a remedy.
+
+\subsection{A minimal many-problem model}
+Consider $N$ binary problems whose logits share one parameter:
+\begin{equation}
+  z_i=u_i+\lambda v,\qquad i=1,\dots,N.
+  \label{eq:model}
+\end{equation}
+$u_i$ is problem-specific, $v$ is a shared direction, and $\lambda$ measures how strongly each problem's logit loads on it.
+In a language model, $v$ stands for anything that moves all answers the same way: a format preference, a bias toward short answers, a preferred numerical value, or the output bias of an answer token.
+Training uses minibatch SGD with step $\eta$. Each step draws $B$ problems and averages their contributions, $\theta\leftarrow\theta+\frac{\eta}{B}\sum_{i\in\text{batch}}\hat g_i\,\nabla_\theta z_i$, where $\hat g_i$ is the estimate of \cref{sec:single} for problem $i$ and $\theta=(u_1,\dots,u_N,v)$. Since $\partial z_i/\partial u_j=\delta_{ij}$ and $\partial z_i/\partial v=\lambda$, the step moves $u_i$ by $\frac{\eta}{B}\hat g_i$ and $v$ by $\frac{\eta\lambda}{B}\sum_{i\in\text{batch}}\hat g_i$.
+A problem is in the batch with probability $B/N$, and $\mathbb E[\hat g_i]=F(z_i)$, so the expected step does not depend on $B$. The batch size affects only the noise.
+Replacing the stochastic update by this expected drift, which is accurate for small steps, gives
+\begin{align}
+  \dot u_i&=\tfrac{\eta}{N}F(z_i), &
+  \dot v&=\tfrac{\eta\lambda}{N}\textstyle\sum_jF(z_j),\nonumber\\
+  \Rightarrow\ \dot z_i&=\underbrace{\tfrac{\eta}{N}F(z_i)}_{\text{local sharpening}}+\underbrace{\eta\lambda^2\langle F\rangle}_{\text{shared drift}},
+  \label{eq:mf}
+\end{align}
+where $\langle\cdot\rangle$ averages over problems.
+We call \cref{eq:mf} the mean-field equations. Because the problems interact only through $v$, which sums all their gradients, the average $\langle F\rangle$ enters exactly. The only approximation is dropping the sampling noise. Without noise a perfectly balanced population would stay balanced forever, so noise re-enters below only as the seed $\delta$ of the shared mode.
+The two terms scale differently with $N$. Each problem receives a $1/N$ share of the training signal, but the shared parameter aggregates the signal of all problems.
+
+\subsection{The symmetric state can be unstable}
+We first ask whether a balanced population, in which different problems prefer different answers, is stable at all.
+Suppose the initial preferences are balanced: half the problems lean to $+$ and half to $-$, with $|z_i(0)|=a$.
+The constant $a>0$ is the \emph{initial confidence}, the logit magnitude shared by all problems. By symmetry the problems stay at $\pm a(t)$ as they sharpen, with $a(0)=a$.
+By oddness of $F$, $\langle F\rangle=0$, so $v\equiv0$ is a solution and each problem sharpens independently.
+Perturb it by a common logit shift $w=\lambda\,\delta v$. Linearizing \cref{eq:mf} gives the following (derivation in \cref{app:stability}).
+
+\begin{proposition}[Shared-mode instability]
+\label{prop:instab}
+To leading order in $1/N$, a common shift evolves as $\dot w=\eta\lambda^2\langle F'(z)\rangle\,w$.
+The symmetric state is linearly unstable along the shared direction if and only if $\langle F'(z)\rangle>0$. For a homogeneous population this means $a<z^\star$.
+\end{proposition}
+
+The structure is that of the paramagnetic instability of the Curie--Weiss model \citep{nishimori2001}.
+$w$ plays the role of a magnetization, the problems are spins coupled only through the mean field, and $\langle F'\rangle$ is the inverse of a susceptibility that changes sign.
+Undecided problems ($|z|<z^\star$) collectively amplify \emph{any} shared bias, whether it comes from sampling noise or a slight initial asymmetry.
+Confident problems ($|z|>z^\star$) collectively suppress it.
+
+\subsection{A race between sharpening and the shared mode}
+\label{sec:race}
+\Cref{prop:instab} says when the shared mode grows, but not whether it grows enough to change any answer.
+The instability is transient, because local sharpening moves every problem out of the window.
+The outcome is decided by which process wins.
+Each problem sharpens as in \cref{eq:sharp}, slowed by the factor $1/N$: $\dot a=\frac{\eta}{N}F(a)$. The total log-amplification of the shared mode while the population is inside the window is
+\begin{equation}
+  \Lambda=\int\!\eta\lambda^2F'(a(t))\,dt=\lambda^2N\,G(a),
+  \label{eq:Lambda}
+\end{equation}
+with $G(a)=\int_a^{z^\star}(F'/F)\,dx=\ln[F^\star/F(a)]$ (\cref{app:stability}).
+Local sharpening takes time $\propto N$, and the shared mode grows at an $N$-independent rate $\propto\lambda^2$, so a larger training set gives the shared mode more time to grow.
+If the seed of the shared mode has size $\delta$, the minority problems are flipped once $\delta e^{\Lambda}=O(1)$, which gives a critical number of problems
+\begin{equation}
+  \boxed{N_c\simeq\frac{\ln(1/\delta)}{\lambda^2\,\ln[F^\star/F(a)]}}
+  \label{eq:Nc}
+\end{equation}
+Above $N_c$ every problem converges to the same answer. Accuracy drops to the base rate while the majority-vote reward goes to~1.
+For other group sizes and estimators, $G$ is replaced by $G_K(a)=\ln[F^\star_K/F_K(a)]$, built from the exact drift of \cref{sec:single}. \Cref{tab:window} lists $G_K(0.5)$, which also does not increase with $K$. A constant factor in $F$ cancels in the ratio, so $G_3=G$ for all three estimators.
+
+\Cref{eq:Nc} leaves the seed $\delta$ unspecified.
+In stochastic training $\delta$ comes from minibatch sampling noise injected into $v$.
+Let $\sigma$ be the standard deviation of the single-problem estimate $\hat g_i$, which fluctuates because each update draws fresh answers. Averaging over a batch of $B$ problems gives per-step noise $\eta\lambda^2\sigma/\sqrt B$ on the common shift. With this noise accumulated over the growth time $1/(\eta\lambda^2F')$, we get $\delta^2\sim\eta\lambda^2\sigma^2/(BF')$ (\cref{app:seed}).
+The seed enters $N_c$ only through $\ln(1/\delta)=\tfrac12\ln B+\ln(1/\lambda)+\text{const}$, so batch size has only a logarithmic effect. Under the linear scaling rule $\eta\propto B$ it has no effect at all.
+
+\paragraph{Falsifiable predictions.}
+Together, these results give four predictions, which we test in \cref{sec:sims}.
+(P1)~A sharp transition in $N$ emerges from the dynamics and is not imposed.
+(P2)~$N_c\propto\lambda^{-2}$, up to the logarithmic correction above.
+(P3)~Batch size enters only logarithmically.
+(P4)~If $a>z^\star$, the symmetric state is linearly stable for every $N$ and every training length. This is a stability property, not a time-scale effect.
+A corollary is that higher-entropy (less confident) initial models have more problems inside the window and therefore collapse at smaller $N$, which matches the empirical observation of \citet{he2026urlvr}.
+
+\subsection{Generalizations}
+\label{sec:general}
+The analysis so far assumes a homogeneous population of binary problems. We now relax both assumptions.
+
+For arbitrary initial logits, \cref{eq:Lambda} becomes $\Lambda=\lambda^2N\,G[\rho_0]$ (\cref{app:stability}), where
+\begin{equation*}
+  G[\rho_0]=\sup_s\int_0^s\langle F'(z(s'))\rangle\,ds'
+\end{equation*}
+and each $z$ follows the sharpening equation \cref{eq:sharp}, $dz/ds=F(z)$ in rescaled time $s=\eta t/N$, from its initial value.
+The integrand is the instability index $\langle F'\rangle$ of \cref{prop:instab}, evaluated along the sharpening trajectory.
+
+Next we drop the restriction to two answers.
+With $M$ candidate answers, each problem has softmax logits $z_i=u_i+\lambda v\in\mathbb R^M$, and the shared parameter $v\in\mathbb R^M$ is a bias toward some answers over others.
+Let $g(z)\in\mathbb R^M$ be the expected single-problem update, the analogue of $F$.
+In the symmetric state each problem prefers one answer by a margin $a$, and the preferred answers are spread evenly over the $M$ labels.
+A common shift $w=\lambda\,\delta v$ then evolves as $\dot w=\eta\lambda^2\bar Jw$, where $\bar J$ is the Jacobian of $g$ averaged over problems.
+For a single problem the Jacobian singles out its preferred answer and couples the components of $w$.
+Averaging over problems removes this coupling: every label is preferred by the same number of problems, so $\bar J$ treats all labels alike.
+Adding the same constant to all logits leaves a softmax unchanged, so only the $M-1$ zero-sum directions of $w$ matter, and on them $\bar J=\kappa(a)\,I_{M-1}$ (\cref{app:multi}).
+The shared mode therefore splits into $M-1$ decoupled directions, each obeying $\dot w=\eta\lambda^2\kappa(a)\,w$.
+Each is the binary problem of \cref{prop:instab} with $F'$ replaced by $\kappa$.
+Likewise the margin $a$ between the preferred and the other logits sharpens as $\dot a=\frac\eta Nf(a)$. Here $f=g_s-g_{\neq s}$ is the drift of the logit of the preferred answer $s$ minus that of any other answer, and it plays the role of $F$.
+The race of \cref{sec:theory} carries over unchanged. The window is $a<a^\star$ with $\kappa(a^\star)=0$, and $\Lambda=\lambda^2N\,G_M(a)$ with $G_M(a)=\int_a^{a^\star}\kappa(x)/f(x)\,dx$.
+Both $\kappa$ and $f$ follow from exact enumeration over multinomial count vectors (\cref{app:drift,app:multi}). For $M=2$ they reduce to $F'$ and $F$.
+
+\subsection{Neural networks: a kernel form}
+\label{sec:kernel}
+The results so far keep the coupling of \cref{eq:model}, a single shared direction with a fixed strength $\lambda$. A real network instead couples problems through all of its parameters.
+For a general network, linearizing the parameter dynamics gives $\dot z=\frac{\eta}{N}\mathbf K F(z)$, where $\mathbf K_{ij}=\nabla_\theta z_i\!\cdot\!\nabla_\theta z_j$ is the empirical neural tangent kernel \citep{jacot2018ntk}. $\mathbf K_{ij}$ measures how much a gradient step on problem $j$ moves the logit of problem $i$.
+Two collective directions matter. One is the uniform mode $\mathbf 1$, which is the shared direction above. The other is the \emph{sign mode} $s$, with $s_i=\mathrm{sign}\,z_i(0)$ the answer problem $i$ currently prefers.
+Moving along $\mathbf 1$ shifts every problem toward the same answer, which is collapse. Moving along $s$ makes every problem more confident in its own answer, which is sharpening applied to all problems at once.
+A kernel component $k_s s_is_j$ means that a step sharpening problem $j$ also pushes $z_i$ toward $s_i$, so sharpening one problem sharpens the others. This is how a network generalizes, and it competes with the uniform mode.
+We summarize $\mathbf K$ by four numbers.
+The \emph{self-kernel} $k_d$, the mean of $\mathbf K_{ii}$, is how much a step on a problem moves its own logit, that is, the effective step size.
+The \emph{shared coupling} $k_u$, the mean of $\mathbf K_{ij}$ over $i\ne j$, is how much a step on one problem moves every other logit the same way, whatever their answers. It drives collapse and plays the role of $\lambda^2$.
+The \emph{prediction-aligned coupling} $k_s$ is the mean of $s_is_j\mathbf K_{ij}$ over $i\ne j$. It protects against collapse.
+The remainder $k_d'=k_d-k_u-k_s$ is the purely problem-specific part of the self-kernel and sets the rate of local sharpening.
+Projecting $\mathbf K\approx k_d'\mathbf I+k_u\mathbf 1\mathbf 1^\top+k_s ss^\top$ onto these modes and repeating the race of \cref{sec:race} yields (\cref{app:kernel})
+\begin{equation}
+  \Lambda(N)=G\,\frac{N\,k_u}{k_d'+N\,k_s},\qquad
+  N_c=\frac{\Lambda_c\,k_d'}{G\,k_u-\Lambda_c\,k_s}.
+  \label{eq:kernel}
+\end{equation}
+The projection keeps exactly the parts of $\mathbf K$ that enter the race: its diagonal and its action along $\mathbf 1$ and $s$, since $\mathbf 1^\top\mathbf K\mathbf 1/N\approx k_d'+Nk_u$ and $s^\top\mathbf K s/N\approx k_d'+Nk_s$.
+It is exact in the toy model, which is the special case $k_d'=1$, $k_u=\lambda^2$, $k_s=0$. In a network it drops the other collective modes of $\mathbf K$, which we return to in \cref{app:nnremedy}.
+When $k_s>0$ the growth of $\Lambda$ with $N$ saturates at $Gk_u/k_s$, and there is a \emph{feature-protected} regime $G\,k_u<\Lambda_c\,k_s$ in which no training-set size causes collapse.
+All quantities in \cref{eq:kernel} can be measured on the initial model before any RL step.
+This assumes that $\mathbf K$ stays near its initial value, as in the lazy regime. When the network learns features, its gradients $\nabla_\theta z_i$ and hence $\mathbf K$ change, and the prediction can fail. Re-measuring $\mathbf K$ later does not help once the race is decided, and after collapse $k_s=k_u$ because all $s_i$ agree.
+In the toy model, a feature coupling $z_i\mathrel{+}=\mu s_iw$ realizes $k_s=\mu^2$ and gives $N_c=1/(\lambda^2G/\Lambda_c-\mu^2)$.
+
+\subsection{A theory-derived remedy}
+\label{sec:remedy}
+Finally, we turn from diagnosing the instability to preventing it.
+The instability lives entirely in the shared mode, so it can be targeted without slowing per-problem sharpening.
+We add to each minibatch objective a marginal-entropy bonus $\beta\,H(\bar p)$ with weight $\beta\ge0$. Here $\bar p=\frac1B\sum_{i\in\text{batch}}p_i$ is the probability of answer $+$ averaged over the batch, and $H$ is the binary entropy
+\begin{equation*}
+  H(q)=-q\ln q-(1-q)\ln(1-q).
+\end{equation*}
+The majority-vote reward lowers the entropy of each problem's answer, and the bonus raises the entropy of the answers pooled across problems, in the spirit of mutual-information objectives for unsupervised classification \citep{bridle1992phantom,krause2010rim}.
+When answers are balanced, $\bar p=\tfrac12$ is the maximum of $H$, so the bonus exerts no force and per-problem sharpening is unaffected.
+A common shift moves every $p_i$ the same way and pushes $\bar p$ away from $\tfrac12$, and the bonus pushes back.
+Near the symmetric state it contributes $-4\beta\langle p(1-p)\rangle^2$ to the growth rate of the shared mode (\cref{app:remedy}), so the symmetric state is stabilized when
+\begin{equation}
+  \beta>\beta_c(a)=\frac{F'(a)}{4\,[p(1-p)]^2}\le\tfrac12 ,
+  \label{eq:beta}
+\end{equation}
+with $p=\sigma(a)$. The threshold is largest at $a=0$, where $F'(0)=1/8$ and $p(1-p)=\tfrac14$ give exactly $\tfrac12$, so any $\beta>\tfrac12$ stabilizes the symmetric state at every confidence.

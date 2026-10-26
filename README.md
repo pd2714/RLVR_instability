@@ -1,0 +1,79 @@
+# Collective collapse in unsupervised (majority-vote) RLVR
+
+Code, results and paper for *Collective Dynamics of Self-Reinforcement: How Cross-Task
+Coupling Drives Policy Collapse in Unsupervised RLVR*.
+
+Label-free RLVR with majority-vote rewards collapses only when the training set has
+many problems. We explain this as an instability of shared parameter directions. While
+many problems are undecided (|z| < ln(2+√3) ≈ 1.32 for K = 3), a shared bias is amplified
+by all problems at once. Per-problem sharpening, which is slowed by 1/N, races against
+this shared mode. The outcome is a critical size
+
+    N_c ≈ ln(1/δ) / (λ² ln[F*/F(a)]),
+
+which we test in a solvable model, in robustness variants, and in a small Transformer.
+
+## Main results
+
+| Prediction | Result |
+|---|---|
+| Sharp transition in N | P(collapse) goes from 0 to 1 within a factor of 3–4 in N |
+| N_c ∝ λ⁻² | N_c ∝ λ^-2.22 over λ ∈ [0.035, 0.28]; mean-field gives exactly λ⁻² |
+| Single critical amplification | Λ_c ≈ 2.6 across 12 λ/confidence sweeps (range 2.1–3.6); 2–4 for GRPO, K, M |
+| Batch size is only logarithmic | 16× in B gives 2.2× in N_c (fixed step); flat under linear lr scaling |
+| Confident models (a > 1.32) are stable | 0 of ~2×10⁶ problem-runs flip, even with 10× longer training |
+| Feature coupling protects | No collapse at any N ≤ 32768 for μ above the predicted μ_c = 0.044 |
+| Remedy β ≥ β_c ≈ ½ | Prevents collapse in the toy model and in the Transformer (in the Transformer, accuracy is not recovered: the next collective mode takes over) |
+| Transformer, no shared direction | 0/168 runs collapse; adding it back, 335/336 collapse |
+| Prediction from the initial kernel | 71% agreement (r = 0.63); errors one-sided, explained by kernel drift |
+
+Not done: stage D (pretrained 0.5B language model), because of compute limits.
+
+## Layout
+
+```
+src/rlvr_collapse/
+  theory.py      exact single-problem drift F, unstable window, amplification G,
+                 mean-field ODE, heterogeneous G, kernel mean-field predictor
+  sim.py         vectorized stochastic simulator (sampling, majority vote, REINFORCE/
+                 mean-baseline/GRPO, SGD/Adam, feature coupling mu, entropy remedy beta)
+  multiclass.py  M-answer softmax theory (exact enumeration) and simulator
+  nn.py          tiny Transformer, empirical-NTK statistics, label-free RL loop
+experiments/
+  stage_a.py     solvable-model sweeps: lambda, conf, batch, batch_linear, stable,
+                 hetero, feature, remedy
+  meanfield.py   deterministic mean-field critical N vs closed form
+  stage_b.py     robustness: grpo (K, estimators), multi (M answers), adam
+  stage_c.py     Transformer: base checkpoints, kernel measurements, 924 RL runs
+  stage_c_surrogate.py  parameter-free predictions from the initial network
+  stage_c_remedy.py     marginal-entropy remedy on a collapsing Transformer
+  figures_*.py   paper figures (-> figures/) and summary json (-> results/)
+results/         raw sweep outputs (json) and summaries
+figures/         paper figures (pdf)
+paper/           ICML-format LaTeX source (main.tex) and build.sh
+```
+
+## Reproduce
+
+Requires Python 3.9+, numpy, scipy, matplotlib, torch (CPU is enough).
+
+```sh
+export PYTHONPATH=src
+python3 experiments/stage_a.py lambda conf batch batch_linear hetero stable feature remedy
+python3 experiments/stage_b.py grpo multi adam
+python3 experiments/stage_c.py all
+python3 experiments/stage_c_surrogate.py
+python3 experiments/stage_c_remedy.py
+cd experiments && python3 figures_a.py && \
+  python3 figures_more.py batch_stable hetero_feature_remedy robust && python3 figures_c.py
+```
+
+On a 14-core laptop, Stages A and B take under an hour and Stage C about 40 minutes.
+
+## Paper
+
+`paper/main.tex` uses the official `icml2026.sty`/`.bst` if they are present in
+`paper/`. Download them from https://media.icml.cc/Conferences/ICML2026/Styles/icml2026.zip.
+Otherwise it falls back to `icml_fallback.sty`, which approximates the ICML layout.
+Build with `paper/build.sh`. On a minimal TinyTeX that lacks `grfext.sty`, set
+`EXTRA_TEXINPUTS` to a directory containing a stub (see the comment in `build.sh`).

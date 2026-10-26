@@ -1,0 +1,86 @@
+\section{Derivations}
+\label{app:derivations}
+
+\subsection{Exact drift for general $K$ and estimators}
+\label{app:drift}
+Let $k$ be the number of $+$ answers among $K$ samples, $k\sim\mathrm{Bin}(K,p)$.
+Given $k$ and the (tie-broken) majority $\hat a$, every sample with answer $c\in\{+,-\}$ receives the same reward $r_c=\mathbf 1[c=\hat a]$ and hence the same advantage $A_c$. The summed score-function gradient is $kA_+(1-p)-(K-k)A_-p$.
+Averaging over tie-breaks gives coefficients $c_+(k)=\frac kK\mathbb E[A_+\mid k]$ and $c_-(k)=\frac{K-k}K\mathbb E[A_-\mid k]$, and
+\begin{equation*}
+  F(z)=\sum_{k=0}^K\binom Kk p^k(1-p)^{K-k}\,\big[c_+(k)(1-p)-c_-(k)p\big].
+\end{equation*}
+Write $\bar r=\max(k,K-k)/K$ for the mean reward when there is no tie. REINFORCE uses $A_c=r_c$, the mean baseline uses $A_c=r_c-\bar r$, and GRPO uses $A_c=(r_c-\bar r)/\sqrt{\bar r(1-\bar r)}$, with $A_c=0$ when all samples agree.
+For $K=3$ the only non-degenerate configurations are the $2{:}1$ splits, where $\bar r=2/3$ and $\sqrt{\bar r(1-\bar r)}=\sqrt2/3$. The mean baseline therefore multiplies every contribution by $2/3$ and GRPO by $\sqrt2$, which proves the claim in \cref{sec:single}.
+The same enumeration over multinomial count vectors gives the $M$-answer drift $g(z)\in\mathbb R^M$, whose components sum to zero.
+
+\subsection{Linear stability and the amplification integral}
+\label{app:stability}
+Write $\epsilon=\eta t/N$ in \cref{eq:mf}.
+Let the problems sit at $\pm a(t)$ with $da/d\epsilon=F(a)$, and let $w=\lambda v$ be a common logit shift.
+Then $z_i=\pm a+w$ and $\langle F\rangle=\tfrac12[F(a+w)-F(a-w)]=F'(a)w+O(w^3)$, so
+\begin{equation*}
+  \frac{dw}{d\epsilon}=\lambda^2N\,F'(a)\,w\quad\Rightarrow\quad
+  \ln\frac{w(\epsilon)}{w(0)}=\lambda^2N\int_0^\epsilon F'(a)\,d\epsilon'=\lambda^2N\ln\frac{F(a(\epsilon))}{F(a(0))}.
+\end{equation*}
+The amplification is largest at the window edge $a=z^\star$, which gives $\Lambda=\lambda^2N\ln[F^\star/F(a_0)]$.
+After that point $F'<0$ and the shift is damped.
+The per-problem term $\frac{\eta}{N}F'(z_i)$ in the full Jacobian amplifies differences between problems on the same side. This only reparametrizes time and cannot flip a problem.
+The minority side flips once $w$ exceeds $a(t)$, which gives the threshold $\Lambda\approx\ln(1/\delta)+O(1)$.
+
+For a heterogeneous population, each problem follows $dz_i/d\epsilon=F(z_i)$ to leading order, and the shift grows at rate $\lambda^2N\langle F'(z(\epsilon))\rangle$. The maximal log-amplification is therefore $\lambda^2N\sup_\epsilon\int_0^\epsilon\langle F'\rangle d\epsilon'$.
+
+\subsection{Size of the noise seed}
+\label{app:seed}
+With minibatches of $B$ problems and step $\eta$, the shared shift receives zero-mean noise of standard deviation $\eta\lambda^2\sigma/\sqrt B$ per step, where $\sigma^2$ is the variance of the single-problem gradient estimate.
+Noise injected within the first growth time $t_{\rm g}=1/(\eta\lambda^2F'(a))$ is amplified almost fully, which gives an effective seed $\delta^2\simeq t_{\rm g}\,\eta^2\lambda^4\sigma^2/B=\eta\lambda^2\sigma^2/(BF'(a))$ and $\ln(1/\delta)=\tfrac12\ln B+\ln(1/\lambda)-\tfrac12\ln\eta+\text{const}$.
+Under the linear scaling rule $\eta\propto B$ the dependence on $B$ cancels.
+
+\subsection{Mean-field check of the closed form}
+\label{app:mfcheck}
+We check \cref{eq:Nc} in the noise-free limit, where it can be tested exactly.
+In rescaled time $s=\eta t/N$, the deterministic two-population version of \cref{eq:mf} reads $dz_\pm/ds=F(z_\pm)+\lambda^2N\langle F\rangle$, where $z_+$ and $z_-$ are the logits of the problems that start at $+a$ and $-a$ (without sampling noise, all problems in each group stay identical) and $\langle F\rangle=\tfrac12[F(z_+)+F(z_-)]$. It depends on $\lambda$ and $N$ only through $X=\lambda^2N$, so in mean field $N_c\propto\lambda^{-2}$ holds exactly.
+Solving for the critical $X_c(a,\delta)$ by bisection, the exact critical amplification $X_cG(a)$ equals $\ln(1/\delta)-c$, with unit slope in $\ln(1/\delta)$ over $\delta\in[10^{-6},10^{-2}]$ and a weakly $a$-dependent offset $c\in[0.9,2.0]$ for $a\in[0.3,1.25]$ ($c\approx1.1$ at $a=0.5$; \cref{tab:mf}). This is the form asserted by \cref{eq:Nc}.
+The constant offset is the $O(1)$ threshold $w\sim a$ required for the minority side to flip.
+In the stochastic simulations of \cref{sec:sims} we measure $\Lambda_c\approx2.6$ at $a=0.5$ (\cref{fig:scaling}b). Inverting $\Lambda_c=\ln(1/\delta_{\rm eff})-c$ with $c\approx1.1$ gives an effective noise seed $\delta_{\rm eff}\approx e^{-3.7}\approx0.02$.
+
+\input{tab_meanfield}
+
+\subsection{Many answers}
+\label{app:multi}
+Let $z_i=a\,e_{s_i}$ with labels $s_i$ balanced over $\{1,\dots,M\}$, and let $w=\lambda v\in\mathbb R^M$.
+Then $\dot w=\eta\lambda^2\langle g(z_i+w)\rangle$, whose linearization is $\eta\lambda^2\bar J w$ with $\bar J=\frac1M\sum_s\partial g/\partial z\,|_{ae_s}$.
+Averaging over $s$ makes $\bar J$ permutation-invariant, so on the zero-sum subspace (the only identifiable directions under softmax) $\bar J=\kappa(a)I$ with $\kappa=\mathrm{tr}(P\bar JP)/(M-1)$ and $P=I-\frac1M\mathbf1\mathbf1^\top$.
+The margin $a$ between the preferred and the other logits obeys $\dot a=\frac\eta N f(a)$ with $f=g_{s}-g_{\neq s}$.
+Dividing the two rates gives $\Lambda=\lambda^2N\int_{a_0}^{a^\star}\kappa/f\,da$.
+For $M=2$ this reduces exactly to the binary result; we checked this numerically.
+
+\subsection{Kernel form}
+\label{app:kernel}
+In a linearized network, $\dot z=\frac\eta N\mathbf K F(z)$.
+Take $\mathbf K=k_d'\mathbf I+k_u\mathbf1\mathbf1^\top+k_sss^\top$ with balanced signs $s$, so that $\mathbf1\perp s$, and a homogeneous population $z_i=s_ia$.
+Then $\dot z_i=\frac\eta N(k_d'+Nk_s)F(a)s_i$, so $\dot a=\frac\eta N(k_d'+Nk_s)F(a)$: sharpening is accelerated by the prediction-aligned coupling.
+A common shift $z_i=s_ia+w$ gives $F(z_i)=s_iF(a)+F'(a)w+O(w^2)$, since $F$ is odd and $F'$ even. With $\mathbf K\mathbf1=(k_d'+Nk_u)\mathbf1$ this gives $\dot w=\frac\eta N(k_d'+Nk_u)F'(a)w$.
+Dividing by $\dot a$ eliminates time:
+\begin{equation*}
+  \frac{d\ln w}{da}=\frac{k_d'+Nk_u}{k_d'+Nk_s}\,\frac{F'(a)}{F(a)}.
+\end{equation*}
+Integrating from $a_0$ to $z^\star$ gives
+\begin{equation*}
+  \Lambda=G(a_0)\,\frac{Nk_u}{k_d'+Nk_s}+G(a_0)\,\frac{k_d'}{k_d'+Nk_s}.
+\end{equation*}
+The second term is the self-term. It is at most $G$ and independent of $N$, and it is the growth that remains with the coupling switched off, when each problem follows its own sign-preserving flow and cannot flip. It is therefore absorbed into the $O(1)$ of the threshold, as in the toy model (\cref{app:stability}), and dropping it gives \cref{eq:kernel}. The $k_d'$ in the denominator sets the sharpening rate and multiplies the leading term, so it is kept.
+We estimate $k_d$ as the mean diagonal of the empirical kernel, $k_u$ as the mean off-diagonal, and $k_s$ as the mean off-diagonal of $s_is_j\mathbf K_{ij}$, and set $k_d'=k_d-k_u-k_s$.
+
+\paragraph{Kernel mean-field predictor.}
+The deterministic baseline of \cref{sec:nn} integrates the projected dynamics directly. Writing $\epsilon=\eta k_d't/N$ and $\langle sF\rangle=\frac1N\sum_js_jF(z_j)$,
+\begin{equation*}
+  \frac{dz_i}{d\epsilon}=F(z_i)+\frac{Nk_s}{k_d'}\,s_i\langle sF\rangle+\frac{Nk_u}{k_d'}\,\langle F\rangle,
+\end{equation*}
+integrated from the measured initial logits over the same training horizon as the RL runs.
+
+\subsection{Marginal-entropy remedy}
+\label{app:remedy}
+The bonus $\beta H(\bar p)$ adds $\beta\ln\frac{1-\bar p}{\bar p}\,p_i(1-p_i)$ to the gradient on $z_i$.
+For a common shift $w$, $\bar p-\tfrac12\approx\langle p(1-p)\rangle w$ and $\ln\frac{1-\bar p}{\bar p}\approx-4(\bar p-\tfrac12)$.
+Averaging over problems shows that the shared-mode growth rate becomes $\eta\lambda^2(\langle F'\rangle-4\beta\langle p(1-p)\rangle^2)$, which gives \cref{eq:beta}.
+At $z=0$, $F'(0)=1/8$ and $p(1-p)=1/4$, so $\beta_c=1/2$, the maximum over $a$.

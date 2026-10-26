@@ -1,0 +1,62 @@
+% ---------------------------------------------------------------------------
+\section{A Small Transformer Trained Without Labels}
+\label{sec:nn}
+
+\Cref{sec:sims,sec:robust} test the theory on the toy model, where the coupling is known exactly. A real network has many shared directions, and its coupling must be measured.
+We therefore ask whether quantities measured on an initial \emph{network}, before any RL step, predict whether label-free RL collapses.
+We describe the task and models, form predictions from the initial network, and then compare them with the outcomes of RL.
+
+\subsection{Setup}
+\label{sec:nnsetup}
+
+\paragraph{Task and architectures.}
+Inputs are six digits, and the answer is $+$ if $x_1+x_2+x_3>x_4+x_5+x_6$ and $-$ otherwise.
+The policy is a small Transformer that reads out an answer logit $z(x)$ from a classification (CLS) token (architecture in \cref{app:details}). Answers are sampled at temperature $\tau$, so the logit of \cref{sec:single} is $z/\tau$.
+Raising $\tau$ makes the same network less confident, which moves problems into the unstable window and increases $G$, without changing the kernel ratios (every kernel entry scales as $1/\tau^2$). We therefore use $\tau$ to vary the entropy of the base model.
+To mimic a pretrained base model with partial competence, we first train briefly with labels. ``Base $n$'' denotes the model after $n$ supervised steps.
+
+We describe the coupling of each network by the kernel ratios of \cref{sec:kernel}: $k_u/k_d'$ measures the shared coupling, which drives collapse, and $k_s/k_d'$ the prediction-aligned coupling, which protects against it. We measure them on the initial network, from per-example gradients on a sample of unlabeled problems.
+We study two architectures chosen to sit at opposite ends of \cref{eq:kernel}: one whose shared coupling far exceeds its protective coupling, and one with essentially no shared coupling but strong protection. Together they test the kernel prediction at both extremes, and the second provides a clean baseline into which a controlled shared coupling can be added back.
+Let $h(x)$ denote the network's readout, the logit difference computed from the CLS token. The \emph{plain} model uses it directly, $z(x)=h(x)$. Its readout features share a large input-independent component, so its shared coupling is an order of magnitude larger than its protective one.
+The \emph{antisymmetric} model uses the same network and parameters but constrains its logit to be antisymmetric under exchanging the two halves of the input, like an odd function: $z(\bar x)=-z(x)$, where $\bar x=(x_4,x_5,x_6,x_1,x_2,x_3)$. We impose this by running the network on both inputs and taking the difference, $z(x)=h(x)-h(\bar x)$. The constraint matches the task, since exchanging the halves always flips the correct answer. It also removes the shared direction: a parameter change that shifts $h$ by the same amount on every input, which in the plain model pushes all problems toward the same answer, cancels in the difference. This leaves essentially no shared coupling while keeping a strong protective one.
+For each architecture we use two base models (\cref{tab:conditions}).
+
+In the antisymmetric model we reintroduce a controlled shared coupling through a scaled output bias, $z\mathrel{+}=\lambda_bb$. This adds $\lambda_b^2$ to $k_u$ and leaves $k_s$ and $k_d'$ essentially unchanged.
+We measure the dose by $\rho_b=\lambda_b^2/k_d$, relative to the self-kernel $k_d$ of the bias-free model.
+
+\paragraph{RL runs and parameter-free predictions.}
+We run label-free majority-vote RL (REINFORCE, $K{=}3$, plain SGD) on the first $N$ problems of an unlabeled pool, with the step scaled so that each visit moves a problem's own logit by the same amount as in the toy model.
+We call each combination of architecture, base model, temperature and dose a \emph{condition}, and run each condition at seven training-set sizes with six seeds (\cref{app:nndetails}).
+
+From the initial network alone, we then predict whether training collapses.
+Our main predictor is a \emph{kernel-calibrated surrogate}: the stochastic toy model of \cref{sec:sims} with $\lambda^2=k_u/k_d'$, $\mu^2=k_s/k_d'$, the network's own initial logits, and the same training settings.
+As simpler baselines we use the bare threshold $\Lambda(N)>\Lambda_c$ of \cref{eq:kernel}, with $\Lambda_c$ from the toy model, and a deterministic mean-field version of the kernel dynamics (\cref{app:kernel}).
+None of these predictors is fitted to the network's RL outcomes.
+
+\subsection{Results}
+\label{sec:nnresults}
+
+\paragraph{Collapse and what controls it.}
+Label-free RL reproduces the failure seen in language models (\cref{fig:nn}a). In collapsing runs the majority-vote reward goes to one while training \emph{and held-out} accuracy fall to chance, because the network gives the same answer to every input.
+Not every run fails this way: for the most confident plain model the reward also rises, but held-out accuracy stays far above chance.
+
+The two architectures let us test whether this collapse requires a shared direction.
+The antisymmetric network, which has none, \emph{never} collapses, as the surrogate predicts (\cref{fig:nn}c). This holds even for highly uncertain initializations, which would collapse at small $N$ given any appreciable shared coupling.
+Adding a shared coupling back through the bias restores collapse in a dose-dependent way, and once it is comparable to the self-kernel ($\rho_b\ge1$) virtually every run collapses (\cref{fig:nn}c).
+This is the network analogue of the $\lambda$-sweep of \cref{sec:sims}, and it directly tests the causal claim: the instability requires a direction that moves all answers together.
+
+The plain network, which has a strong intrinsic shared direction, shows the two dependences reported for language models.
+Its probability of collapse grows with $N$ (\cref{fig:nn}b), the small-set-stable, large-set-unstable pattern of \citet{he2026urlvr}, here at smaller $N$ because its shared coupling is much stronger than in our toy-model runs.
+Raising the temperature, which increases the initial entropy, increases collapse monotonically for both base models (\cref{fig:nn}b, \cref{tab:conditions}).
+
+\paragraph{Accuracy of the parameter-free predictions.}
+We score each predictor on every condition and training-set size, counting agreement when the predicted and observed probabilities of collapse lie on the same side of $\tfrac12$.
+The surrogate agrees in $71\%$ of cases (\cref{fig:nn}d), and more often far from threshold. The two simpler predictors do worse (\cref{app:nndetails}).
+The errors are almost all in one direction: the real network collapses more often than its initial kernel predicts.
+Most misses are antisymmetric networks with weak added coupling, which sit close to threshold, and confident plain networks at $\tau=1$, whose initial logits place almost no problems inside the unstable window.
+
+The bias has a simple cause: the kernel changes during training, which breaks the fixed-kernel assumption of \cref{sec:kernel}. Feature learning quickly erodes the protective coupling, so the initial kernel underestimates the risk of collapse (\cref{app:kerneldrift}).
+
+\paragraph{Marginal-entropy remedy.}
+The bonus of \cref{sec:remedy} also prevents collapse in the network, but it does not rescue accuracy (\cref{fig:nnremedy}, \cref{app:nnremedy}).
+The bonus penalizes only an imbalance of the pooled answers, so it damps only the uniform mode. The kernel has other collective modes that move many problems at once while keeping the answers balanced, and that are unrelated to the current predictions. \Cref{prop:instab} applies to each of them, so once the uniform mode is damped, the strongest of them takes over. The network still ends confident and balanced, but its answers follow a pattern set by its own features rather than by the task, and accuracy falls to chance.

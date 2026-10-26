@@ -1,0 +1,60 @@
+% icml_fallback.sty -- used ONLY when the official icml2026.sty is not present.
+% Approximates the ICML two-column layout and defines the ICML front-matter
+% macros so that main.tex compiles unchanged.  For submission, download the
+% official kit (https://media.icml.cc/Conferences/ICML2026/Styles/icml2026.zip),
+% place icml2026.sty / icml2026.bst next to main.tex, and recompile.
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{icml_fallback}[2026/10/14 ICML-like fallback layout]
+
+\RequirePackage[letterpaper,textwidth=6.75in,textheight=9.0in,top=1.0in,left=0.875in,columnsep=0.25in,headsep=0.2in]{geometry}
+\RequirePackage{times}
+\IfFileExists{pcrr7t.tfm}{}{\renewcommand{\ttdefault}{cmtt}}  % Courier missing in minimal TeX
+\RequirePackage[round]{natbib}
+\RequirePackage{xcolor}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5.5pt}
+\renewcommand{\normalsize}{\fontsize{10}{11}\selectfont}
+\normalsize
+
+% running title (kernel-only; no fancyhdr)
+\newcommand{\icmltitlerunning}[1]{\gdef\@icmltitlerunning{#1}}
+\gdef\@icmltitlerunning{}
+\def\ps@icmlfallback{%
+  \def\@oddhead{\vbox{\hbox to\textwidth{\hfil\small\bfseries\@icmltitlerunning\hfil}\vskip 2pt\hrule height 1pt}}%
+  \let\@evenhead\@oddhead
+  \def\@oddfoot{\hfil\thepage\hfil}\let\@evenfoot\@oddfoot}
+\pagestyle{icmlfallback}
+
+% front matter
+\newcommand{\icmltitle}[1]{%
+  \vbox{\hsize\textwidth\linewidth\hsize
+  \vskip 0.1in\hrule height 4pt\vskip 0.25in
+  \centering{\LARGE\bfseries #1\par}
+  \vskip 0.22in\hrule height 1pt\vskip 0.1in}}
+\newcommand{\icmlsetsymbol}[2]{}
+\newenvironment{icmlauthorlist}{\begin{center}\large}{\end{center}\vskip 0.05in}
+\newcommand{\icmlauthor}[2]{#1}
+\newcommand{\icmlaffiliation}[2]{\gdef\@icmlaffil{#2}}
+\gdef\@icmlaffil{}
+\newcommand{\icmlcorrespondingauthor}[2]{\gdef\@icmlcorr{#1 \textless#2\textgreater}}
+\gdef\@icmlcorr{}
+\newcommand{\icmlkeywords}[1]{}
+\newcommand{\icmlEqualContribution}{}
+\newcommand{\printAffiliationsAndNotice}[1]{%
+  \begingroup\renewcommand{\thefootnote}{}%
+  \footnotetext{\hspace*{-1.8em}\small\@icmlaffil.\ Correspondence to: \@icmlcorr.\ #1}%
+  \endgroup}
+
+% section style closer to ICML (kernel \@startsection; no titlesec)
+\renewcommand\section{\@startsection{section}{1}{\z@}{-8pt plus -2pt minus -1pt}{4pt}{\large\bfseries}}
+\renewcommand\subsection{\@startsection{subsection}{2}{\z@}{-6pt plus -2pt minus -1pt}{3pt}{\normalsize\bfseries}}
+\renewcommand\subsubsection{\@startsection{subsubsection}{3}{\z@}{-5pt plus -1pt}{2pt}{\normalsize\scshape}}
+\renewcommand\paragraph{\@startsection{paragraph}{4}{\z@}{4pt plus 1pt}{-0.6em}{\normalsize\bfseries}}
+\renewcommand\@seccntformat[1]{\csname the#1\endcsname.\hspace{0.5em}}
+
+% abstract in ICML style
+\renewenvironment{abstract}{%
+  \centerline{\large\bfseries Abstract}\vspace{0.5ex}%
+  \begin{quote}\vspace{-1ex}}{\par\end{quote}\vskip 1ex}
+\endinput
