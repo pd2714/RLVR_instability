@@ -7,6 +7,10 @@
 
 % Official ICML 2026 style if present; otherwise an ICML-like fallback.
 \IfFileExists{icml2026.sty}{\usepackage{icml2026}}{\usepackage{icml_fallback}}
+% Clickable links without coloured boxes; set PDF metadata.
+\hypersetup{hidelinks,
+  pdftitle={Collective Dynamics of Self-Reinforcement: How Cross-Task Coupling Drives Policy Collapse in Unsupervised RLVR},
+  pdfauthor={Peize Ding}}
 
 \usepackage{amsmath,amssymb,mathtools,amsthm}
 \usepackage[capitalize,noabbrev]{cleveref}

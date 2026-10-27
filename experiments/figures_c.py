@@ -15,6 +15,43 @@ def key(d):
     return (d["arch"], d["base"], d["tau"], d["rho"])
 
 
+def scores(runs, cells, n_boot=5000):
+    """Score the predictors against trivial baselines: run-level Brier score and AUC,
+    cell-level sign agreement, and a bootstrap over conditions (cells of a condition are correlated)."""
+    by = {(c["cond"], c["N"]): c for c in cells}
+    y = np.array([float(r["final"]["phi"] > COLLAPSE) for r in runs])
+    cr = [by[(key(r), r["N"])] for r in runs]
+    rate = float(y.mean())
+    preds = {"surrogate": [c["p_sur"] for c in cr], "kernel_meanfield": [c["kmf"] for c in cr],
+             "lambda_threshold": [float(c["Lambda"] > 2.64) for c in cr],
+             "always_collapse": [1.0] * len(y), "always_stable": [0.0] * len(y), "base_rate": [rate] * len(y)}
+
+    def auc(s):
+        pos, neg = s[y == 1], s[y == 0]
+        return float(np.mean(pos[:, None] > neg[None, :]) + 0.5 * np.mean(pos[:, None] == neg[None, :]))
+
+    out = dict(base_rate=rate, mean_surrogate=float(np.mean(preds["surrogate"])))
+    for k, q in preds.items():
+        q = np.array(q)
+        out[k] = dict(brier=float(np.mean((q - y) ** 2)), run_agree=float(np.mean((q > 0.5) == (y > 0.5))))
+    out["surrogate"]["auc"] = auc(np.array(preds["surrogate"]))
+    po = np.array([c["p_obs"] for c in cells])
+    ps = np.array([c["p_sur"] for c in cells])
+    out["cell_agree"] = dict(surrogate=float(np.mean((ps > 0.5) == (po > 0.5))), always_collapse=float(np.mean(po > 0.5)))
+    conds = sorted({c["cond"] for c in cells})
+    idx = {c: [i for i, x in enumerate(cells) if x["cond"] == c] for c in conds}
+    rng = np.random.default_rng(0)
+    boot = []
+    for _ in range(n_boot):
+        ii = np.concatenate([idx[conds[j]] for j in rng.choice(len(conds), len(conds))])
+        boot.append((np.mean((ps[ii] > 0.5) == (po[ii] > 0.5)), np.mean(po[ii] > 0.5)))
+    boot = np.array(boot)
+    out["cell_agree_ci95"] = dict(surrogate=np.percentile(boot[:, 0], [2.5, 97.5]).tolist(),
+                                  always_collapse=np.percentile(boot[:, 1], [2.5, 97.5]).tolist(),
+                                  difference=np.percentile(boot[:, 0] - boot[:, 1], [2.5, 97.5]).tolist())
+    return out
+
+
 def main():
     runs = json.load(open(os.path.join(RESULTS, "C_runs.json")))
     kern = {key(r): r for r in json.load(open(os.path.join(RESULTS, "C_kernel.json")))}
@@ -107,7 +144,8 @@ def main():
     lam_agree = np.mean([(x["Lambda"] > 2.64) == (x["p_obs"] > 0.5) for x in cells])
     summ = dict(n_cells=len(cells), n_runs=len(runs), surrogate_r=float(r), surrogate_agree=float(agree),
                 kmf_agree=float(kmf_agree), lambda_threshold_agree=float(lam_agree),
-                mean_abs_err=float(np.mean(np.abs(ps - po))), cells=[{**x, "cond": list(x["cond"])} for x in cells],
+                mean_abs_err=float(np.mean(np.abs(ps - po))), scores=scores(runs, cells),
+                cells=[{**x, "cond": list(x["cond"])} for x in cells],
                 kernel=[{**v, "key": list(k)} for k, v in kern.items()])
     if os.path.exists(os.path.join(RESULTS, "C_remedy.json")):
         rem = json.load(open(os.path.join(RESULTS, "C_remedy.json")))

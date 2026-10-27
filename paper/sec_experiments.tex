@@ -9,7 +9,7 @@ We simulate \cref{eq:model} with every source of finite-sample noise included. E
 Unless stated otherwise we use REINFORCE with $K{=}3$ and train until every problem has left the unstable window.
 Initial preferences are exactly balanced, the shared parameter starts at $v{=}0$, and the initial majority is correct for $80\%$ of problems, so collapse can only be driven by sampling noise.
 We call a run collapsed when the order parameter $\Phi=|\langle\mathrm{sign}\,z_i\rangle|$, which is $0$ for balanced answers and $1$ when all problems give the same answer, exceeds $0.5$ at the end of training. $N_c$ is the midpoint of a logistic fit of $P(\text{collapse})$ against $\ln N$.
-All settings are listed in \cref{app:details}, and code and raw results are in the supplementary repository.
+All settings are listed in \cref{app:details}, and code and raw results are available at \url{https://github.com/pd2714/RLVR_instability}.
 
 \begin{figure*}[t]
 \centering

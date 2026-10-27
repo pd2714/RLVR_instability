@@ -10,7 +10,18 @@ Averaging over tie-breaks gives coefficients $c_+(k)=\frac kK\mathbb E[A_+\mid k
   F(z)=\sum_{k=0}^K\binom Kk p^k(1-p)^{K-k}\,\big[c_+(k)(1-p)-c_-(k)p\big].
 \end{equation*}
 Write $\bar r=\max(k,K-k)/K$ for the mean reward when there is no tie. REINFORCE uses $A_c=r_c$, the mean baseline uses $A_c=r_c-\bar r$, and GRPO uses $A_c=(r_c-\bar r)/\sqrt{\bar r(1-\bar r)}$, with $A_c=0$ when all samples agree.
-For $K=3$ the only non-degenerate configurations are the $2{:}1$ splits, where $\bar r=2/3$ and $\sqrt{\bar r(1-\bar r)}=\sqrt2/3$. The mean baseline therefore multiplies every contribution by $2/3$ and GRPO by $\sqrt2$, which proves the claim in \cref{sec:single}.
+For $K=3$ the estimators split the drift differently between unanimous groups and $2{:}1$ splits.
+For REINFORCE, a unanimous group has $r_j=1$ for all samples, so $\hat g=1-p$ for $k=3$ and $\hat g=-p$ for $k=0$. A $2{:}1$ split rewards only its two majority samples, so $\hat g=\tfrac23(1-p)$ for $k=2$ and $\hat g=-\tfrac23p$ for $k=1$. Splitting the expectation accordingly,
+\begin{equation*}
+  \mathbb E[\hat g\,\mathbf 1_{\rm unanimous}]=p^3(1-p)-(1-p)^3p=p(1-p)(2p-1)=F(z),\qquad
+  \mathbb E[\hat g\,\mathbf 1_{2:1}]=2p^2(1-p)^2-2p^2(1-p)^2=0,
+\end{equation*}
+so for REINFORCE the unanimous groups carry the entire mean drift.
+For the mean baseline and GRPO the advantage vanishes in unanimous groups, and only the $2{:}1$ splits contribute. There $\bar r=2/3$, the majority samples receive $A=\tfrac13$ and the minority sample $A=-\tfrac23$. Because the two scores differ by exactly $(1-p)-(-p)=1$, the mean-baseline estimate is $\hat g=\pm\tfrac29$ independently of $p$, with the sign of the majority. Hence
+\begin{equation*}
+  F_{\rm mean}(z)=\tfrac29\big[3p^2(1-p)-3p(1-p)^2\big]=\tfrac23\,p(1-p)(2p-1)=\tfrac23F(z).
+\end{equation*}
+GRPO divides these advantages by the common standard deviation $\sqrt{\bar r(1-\bar r)}=\sqrt2/3$, which gives $F_{\rm GRPO}=\tfrac{3}{\sqrt2}\cdot\tfrac23F=\sqrt2F$. The three drifts are therefore proportional, which proves the claim in \cref{sec:single}, even though they draw their signal from different groups.
 The same enumeration over multinomial count vectors gives the $M$-answer drift $g(z)\in\mathbb R^M$, whose components sum to zero.
 
 \subsection{Linear stability and the amplification integral}
@@ -77,6 +88,16 @@ The deterministic baseline of \cref{sec:nn} integrates the projected dynamics di
   \frac{dz_i}{d\epsilon}=F(z_i)+\frac{Nk_s}{k_d'}\,s_i\langle sF\rangle+\frac{Nk_u}{k_d'}\,\langle F\rangle,
 \end{equation*}
 integrated from the measured initial logits over the same training horizon as the RL runs.
+
+\paragraph{Kernel-calibrated surrogate.}
+The main predictor of \cref{sec:nn} keeps the same projected kernel but replaces the deterministic dynamics by the stochastic simulator of \cref{sec:sims}, in units where the problem-specific self-kernel is $k_d'=1$.
+For each condition and training-set size $N$ we
+(i)~set $u_i=z_i(0)/\tau$, the network's initial logits on its $N$ training problems;
+(ii)~fix the feature-coupling signs $s_i=\mathrm{sign}\,z_i(0)$ and start the shared parameters at $v=w=0$;
+(iii)~set $\lambda^2=k_u/k_d'$ and $\mu^2=k_s/k_d'$, so that $z_i=u_i+\lambda v+\mu s_iw$;
+(iv)~train with the settings of the network run: minibatches of $B=\min(16,N)$ problems, $K=3$ samples, majority vote, REINFORCE, plain SGD and 100 epochs, with step $0.125B/(1+\lambda^2+\mu^2)$, so that a visit moves a problem's own logit by the same amount as the network's step $0.125B/k_d$;
+(v)~repeat with 24 seeds, and take the fraction of seeds that end with $\Phi>0.5$ as the predicted probability of collapse.
+The three predictors use the same kernel ratios and differ in how much of the training dynamics they keep. The surrogate keeps the heterogeneous initial logits, the finite training horizon and the sampling noise, so the seed $\delta$ of the shared mode arises from the same sources as in the network. The kernel mean-field keeps the logits and the horizon but drops the noise, so only the initial imbalance of the logits seeds the shared mode. The bare threshold keeps only the initial confidence profile, through $G$, and takes $\Lambda_c$ from the toy model.
 
 \subsection{Marginal-entropy remedy}
 \label{app:remedy}

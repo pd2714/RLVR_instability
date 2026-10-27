@@ -39,7 +39,8 @@ that is, $0.21<p<0.79$. Evaluating \cref{eq:F} at the edge gives $F^\star=F(z^\s
 Inside this window a problem's response to a small common push grows with the push. Outside the window it shrinks (\cref{fig:mechanism}a).
 
 So far we have used REINFORCE with $K=3$. We now check how $F$ changes with the estimator and the group size.
-For $K=3$ only the $2{:}1$ splits carry signal, and they all have the same reward standard deviation. The mean baseline therefore gives exactly $\tfrac23F$ and GRPO gives exactly $\sqrt2F$ (\cref{app:drift}): \emph{for $K=3$, std-normalization changes the time scale but not the shape of $F$}.
+For group-mean and GRPO advantages, unanimous groups have zero advantage, so only the $2{:}1$ splits contribute, and they all have the same reward standard deviation. For REINFORCE, unanimous groups also contribute; in fact for $K=3$ they carry the entire mean drift, while the contributions of the $2{:}1$ splits cancel.
+Nevertheless, exact enumeration shows that the three estimators have proportional mean drifts at $K=3$: the mean baseline gives exactly $\tfrac23F$ and GRPO exactly $\sqrt2F$ (\cref{app:drift}). \emph{For $K=3$, the choice of estimator changes the time scale but not the shape of $F$}.
 For larger $K$ the shapes differ. Each $K$ and estimator then has its own exact drift $F_K$, window edge $z^\star_K$ (where $F_K'=0$) and edge drift $F^\star_K=F_K(z^\star_K)$.
 \Cref{tab:window} (Appendix) lists $z^\star_K$, which does not increase with $K$, so larger groups narrow the unstable window.
 The analysis below uses $F$ only through the sign of $F'$ and the ratio $F^\star/F$, so it holds for any $K$ and estimator once $F$, $z^\star$ and $F^\star$ are replaced by $F_K$, $z^\star_K$ and $F^\star_K$. We quote $K=3$ values and drop the subscript unless stated otherwise.
@@ -50,7 +51,7 @@ The analysis below uses $F$ only through the sign of $F'$ and the ratio $F^\star
 \section{Collective Theory}
 \label{sec:theory}
 
-We now couple many problems through shared parameters. We introduce a minimal model, show that the balanced state can be unstable, derive the critical number of problems from a race between two time scales, and extend the result to heterogeneous confidence and many answers. We then give a kernel form of the theory for neural networks and derive a remedy.
+We now couple many problems through shared parameters. We introduce a minimal model, show that a balanced population amplifies shared perturbations while its problems are undecided, derive the critical number of problems from a race between two time scales, and extend the result to heterogeneous confidence and many answers. We then give a kernel form of the theory for neural networks and show how to stabilize the uniform collective mode.
 
 \subsection{A minimal many-problem model}
 Consider $N$ binary problems whose logits share one parameter:
@@ -73,8 +74,8 @@ where $\langle\cdot\rangle$ averages over problems.
 We call \cref{eq:mf} the mean-field equations. Because the problems interact only through $v$, which sums all their gradients, the average $\langle F\rangle$ enters exactly. The only approximation is dropping the sampling noise. Without noise a perfectly balanced population would stay balanced forever, so noise re-enters below only as the seed $\delta$ of the shared mode.
 The two terms scale differently with $N$. Each problem receives a $1/N$ share of the training signal, but the shared parameter aggregates the signal of all problems.
 
-\subsection{The symmetric state can be unstable}
-We first ask whether a balanced population, in which different problems prefer different answers, is stable at all.
+\subsection{Shared perturbations grow while problems are undecided}
+We first ask whether a balanced population, in which different problems prefer different answers, resists a common push.
 Suppose the initial preferences are balanced: half the problems lean to $+$ and half to $-$, with $|z_i(0)|=a$.
 The constant $a>0$ is the \emph{initial confidence}, the logit magnitude shared by all problems. By symmetry the problems stay at $\pm a(t)$ as they sharpen, with $a(0)=a$.
 By oddness of $F$, $\langle F\rangle=0$, so $v\equiv0$ is a solution and each problem sharpens independently.
@@ -82,9 +83,11 @@ Perturb it by a common logit shift $w=\lambda\,\delta v$. Linearizing \cref{eq:m
 
 \begin{proposition}[Shared-mode instability]
 \label{prop:instab}
-To leading order in $1/N$, a common shift evolves as $\dot w=\eta\lambda^2\langle F'(z)\rangle\,w$.
-The symmetric state is linearly unstable along the shared direction if and only if $\langle F'(z)\rangle>0$. For a homogeneous population this means $a<z^\star$.
+To leading order in $1/N$, a common shift evolves as $\dot w=\eta\lambda^2\langle F'(z(t))\rangle\,w$, with the logits $z(t)$ evaluated along the sharpening trajectory.
+A small shared perturbation therefore grows at time $t$ if and only if $\langle F'(z(t))\rangle>0$. For a homogeneous population this means $a(t)<z^\star$.
 \end{proposition}
+
+\Cref{prop:instab} is a statement about the \emph{instantaneous} growth rate of a perturbation along a time-dependent trajectory, on which every $|z_i|$ keeps increasing. It is not the instability condition of a fixed point, and it is not sufficient for collapse: a shared perturbation that grows for a while can still be too small to flip any answer by the time sharpening has carried the population out of the window. Whether collapse occurs is decided by the \emph{integrated} growth, which we compute in \cref{sec:race}.
 
 The structure is that of the paramagnetic instability of the Curie--Weiss model \citep{nishimori2001}.
 $w$ plays the role of a magnetization, the problems are spins coupled only through the mean field, and $\langle F'\rangle$ is the inverse of a susceptibility that changes sign.
@@ -121,7 +124,7 @@ Together, these results give four predictions, which we test in \cref{sec:sims}.
 (P1)~A sharp transition in $N$ emerges from the dynamics and is not imposed.
 (P2)~$N_c\propto\lambda^{-2}$, up to the logarithmic correction above.
 (P3)~Batch size enters only logarithmically.
-(P4)~If $a>z^\star$, the symmetric state is linearly stable for every $N$ and every training length. This is a stability property, not a time-scale effect.
+(P4)~In the homogeneous fixed-coupling model, if $a>z^\star$, a small shared perturbation decays at every instant, for every $N$ and every training length. This is a stability property, not a time-scale effect. It is a prediction for this model only: in a network whose kernel changes during training, a small initial $G$ does not guarantee stability (\cref{sec:nn}).
 A corollary is that higher-entropy (less confident) initial models have more problems inside the window and therefore collapse at smaller $N$, which matches the empirical observation of \citet{he2026urlvr}.
 
 \subsection{Generalizations}
@@ -174,10 +177,10 @@ All quantities in \cref{eq:kernel} can be measured on the initial model before a
 This assumes that $\mathbf K$ stays near its initial value, as in the lazy regime. When the network learns features, its gradients $\nabla_\theta z_i$ and hence $\mathbf K$ change, and the prediction can fail. Re-measuring $\mathbf K$ later does not help once the race is decided, and after collapse $k_s=k_u$ because all $s_i$ agree.
 In the toy model, a feature coupling $z_i\mathrel{+}=\mu s_iw$ realizes $k_s=\mu^2$ and gives $N_c=1/(\lambda^2G/\Lambda_c-\mu^2)$.
 
-\subsection{A theory-derived remedy}
+\subsection{Stabilizing the uniform collective mode}
 \label{sec:remedy}
-Finally, we turn from diagnosing the instability to preventing it.
-The instability lives entirely in the shared mode, so it can be targeted without slowing per-problem sharpening.
+Finally, we turn from diagnosing the instability to damping it.
+In the minimal model the instability lives entirely in the uniform shared mode, so it can be targeted without slowing per-problem sharpening. A network has further collective modes, and damping the uniform one alone does not protect accuracy there (\cref{sec:nnresults}).
 We add to each minibatch objective a marginal-entropy bonus $\beta\,H(\bar p)$ with weight $\beta\ge0$. Here $\bar p=\frac1B\sum_{i\in\text{batch}}p_i$ is the probability of answer $+$ averaged over the batch, and $H$ is the binary entropy
 \begin{equation*}
   H(q)=-q\ln q-(1-q)\ln(1-q).
@@ -185,9 +188,9 @@ We add to each minibatch objective a marginal-entropy bonus $\beta\,H(\bar p)$ w
 The majority-vote reward lowers the entropy of each problem's answer, and the bonus raises the entropy of the answers pooled across problems, in the spirit of mutual-information objectives for unsupervised classification \citep{bridle1992phantom,krause2010rim}.
 When answers are balanced, $\bar p=\tfrac12$ is the maximum of $H$, so the bonus exerts no force and per-problem sharpening is unaffected.
 A common shift moves every $p_i$ the same way and pushes $\bar p$ away from $\tfrac12$, and the bonus pushes back.
-Near the symmetric state it contributes $-4\beta\langle p(1-p)\rangle^2$ to the growth rate of the shared mode (\cref{app:remedy}), so the symmetric state is stabilized when
+Near the symmetric state it contributes $-4\beta\langle p(1-p)\rangle^2$ to the growth rate of the shared mode (\cref{app:remedy}), so the shared mode is damped when
 \begin{equation}
   \beta>\beta_c(a)=\frac{F'(a)}{4\,[p(1-p)]^2}\le\tfrac12 ,
   \label{eq:beta}
 \end{equation}
-with $p=\sigma(a)$. The threshold is largest at $a=0$, where $F'(0)=1/8$ and $p(1-p)=\tfrac14$ give exactly $\tfrac12$, so any $\beta>\tfrac12$ stabilizes the symmetric state at every confidence.
+with $p=\sigma(a)$. The threshold is largest at $a=0$, where $F'(0)=1/8$ and $p(1-p)=\tfrac14$ give exactly $\tfrac12$, so any $\beta>\tfrac12$ damps the uniform shared mode at every confidence.

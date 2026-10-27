@@ -81,20 +81,29 @@ At very small $N$ the finite-sample imbalance of the initial answers (up to $\Ph
 
 \subsection{Scoring the predictions}
 We score each \emph{cell}, a condition at one training-set size. There are $22\times7=154$ cells of 6 runs each. A cell's observed outcome is the fraction of its runs that collapse, and a predictor agrees with it when both lie on the same side of $\tfrac12$.
-The kernel-calibrated surrogate agrees in $71\%$ of cells (Pearson $r=0.63$), the deterministic kernel mean-field in $63\%$, and the bare threshold $\Lambda(N)>\Lambda_c$ in $58\%$. Far from threshold ($\rho_b=0$ or $\rho_b\ge1$) the surrogate agrees in $86\%$ of cells.
+The kernel-calibrated surrogate agrees in $71\%$ of cells (Pearson $r=0.63$), the deterministic kernel mean-field in $63\%$, and the bare threshold $\Lambda(N)>\Lambda_c$ in $58\%$. Far from threshold ($\rho_b=0$ or $\rho_b\ge1$) the surrogate agrees in $86\%$ of cells, against $67\%$ for always predicting collapse.
 In $43$ cells the network collapses although the surrogate predicts stability, and in only $1$ cell the reverse.
 Thirty of the 43 are antisymmetric cells in which the added shared coupling is at most about three times the protective one ($k_u\lesssim3k_s$: $\rho_b=0.3$, and base 20 at $\rho_b=1$).
 Eight are the confident plain networks at $\tau=1$, where $G\le0.025$ and the surrogate predicts little collapse. Base 90 nevertheless collapses in most runs for $N\ge64$, and base 120 at some sizes but not at others.
 The remaining five are base 120 at $\tau=2$ (four cells) and $\tau=3$ (one cell), where the network keeps collapsing at large $N$ but the surrogate predicts stability.
 For base 90 at $\tau=2$ and $3$ the surrogate matches the observed collapse at large $N$. At small $N$ it overpredicts collapse, because the measured coupling already places $\Lambda$ near or above $\Lambda_c$ at $N=16$; the one cell predicted to collapse that does not is base 90 at $\tau=2$, $N=16$.
 
+\paragraph{Comparison with trivial baselines.}
+Sign agreement has to be read against the base rate. Of the 924 runs, $71\%$ collapse, and $73\%$ of cells have a majority of collapsed runs, so a predictor that always answers ``collapse'' agrees in $73\%$ of cells, slightly more than the surrogate.
+The cells are also noisy and correlated. With 6 runs per cell, an observed fraction has a binomial standard error of up to $0.2$, so cells near threshold are classified with large uncertainty, and the 7 cells of a condition share the same network. Resampling the 22 conditions (bootstrap, 5000 draws) gives $95\%$ intervals of $[56\%,86\%]$ for the surrogate's agreement and $[56\%,88\%]$ for always-collapse, and $[-25,+25]$ percentage points for their difference. Sign agreement therefore does not distinguish the surrogate from the trivial predictor.
+Probabilistic scores on the 924 individual runs are more informative. The Brier score of the surrogate is $0.235$, better than always-collapse ($0.289$), always-stable ($0.711$), the deterministic kernel mean-field ($0.380$) and the bare threshold ($0.419$). It is worse than a constant prediction equal to the observed collapse rate ($0.205$), although that reference is fitted to the outcomes and therefore optimistic.
+The surrogate ranks runs well (area under the ROC curve $0.87$) but is poorly calibrated: its mean predicted probability of collapse is $0.46$, against an observed $0.71$.
+Most of its discriminating power comes from separating the antisymmetric networks without added coupling, which it correctly predicts never collapse (all 28 cells), from those with added coupling. Within the plain networks it agrees in $67\%$ of cells, below always-collapse ($81\%$).
+The plain base-120 network at $\tau=1$ makes the limitation concrete. Its initial amplification is $G=0.000$ to three decimals, so the fixed-kernel theory predicts essentially no growth of the shared mode, yet $17$ of its $42$ runs collapse (\cref{tab:conditions}).
+In short, the initial kernel identifies which architectures are protected and orders conditions by risk, but it does not locate a reliable quantitative stability boundary for a given network.
+
 \subsection{Kernel drift}
 \label{app:kerneldrift}
-The one-sided errors of the parameter-free predictions have a simple cause: the kernel changes during training (\cref{tab:drift}).
-In the antisymmetric base-20 network, the protective coupling $k_s/k_d'$ drops from $0.42$ to $0.07$ within the first epoch, while the shared coupling $k_u/k_d'$ only halves, so the saturation level $Gk_u/k_s$ of $\Lambda$ roughly triples.
-In the antisymmetric base-10 network the self-kernel $k_d$ grows by $28$--$245\times$ in a few epochs, so the effective step leaves the small-step regime altogether.
-The plain networks drift much less: $k_d$ changes by at most $1.6\times$ over the first 4 epochs and $2.2\times$ over 8.
-Feature learning thus erodes exactly the protection that the static theory relies on. A predictor for strongly feature-learning networks must track the kernel, and the initial kernel gives a lower bound on the risk.
+One important source of the one-sided errors is that the kernel changes during training (\cref{tab:drift}). The cases in \cref{tab:drift} do not, however, follow a single pattern.
+In the antisymmetric base-20 network, the protective coupling $k_s/k_d'$ drops from $0.42$ to $0.07$ within the first epoch, while the shared coupling $k_u/k_d'$ only halves, so the saturation level $Gk_u/k_s$ of $\Lambda$ roughly triples. Here feature learning erodes the protective coupling relative to the shared one, as the static theory would need to anticipate.
+In the antisymmetric base-10 network the dominant change is different: the self-kernel $k_d$ grows by $28$--$245\times$ in a few epochs, so the effective step leaves the small-step regime altogether, and both ratios move mainly because of this growth ($k_s/k_d'$ even rises at first).
+The plain networks drift much less: $k_d$ changes by at most $1.6\times$ over the first 4 epochs and $2.2\times$ over 8, and in base 90 $k_s/k_d'$ increases rather than decreases. Kernel drift therefore does not explain why the confident plain networks at $\tau=1$ collapse more often than predicted. Collective kernel modes other than the uniform one (\cref{app:nnremedy}) and the finite-sample imbalance of the initial answers at small $N$ are plausible contributors there, which we have not separated.
+A predictor for strongly feature-learning networks must track the kernel, and in our runs the initial kernel tends to underestimate the risk of collapse.
 
 \subsection{Remedy and the next collective mode}
 \label{app:nnremedy}

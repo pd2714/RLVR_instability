@@ -10,3 +10,7 @@ paper/*.fls
 paper/*.fdb_latexmk
 paper/*.synctex.gz
 logs/
+
+# arXiv submission artifacts
+arxiv_submission.zip
+arxiv_abstract.txt

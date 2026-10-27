@@ -29,7 +29,7 @@ We run label-free majority-vote RL (REINFORCE, $K{=}3$, plain SGD) on the first 
 We call each combination of architecture, base model, temperature and dose a \emph{condition}, and run each condition at seven training-set sizes with six seeds (\cref{app:nndetails}).
 
 From the initial network alone, we then predict whether training collapses.
-Our main predictor is a \emph{kernel-calibrated surrogate}: the stochastic toy model of \cref{sec:sims} with $\lambda^2=k_u/k_d'$, $\mu^2=k_s/k_d'$, the network's own initial logits, and the same training settings.
+Our main predictor is a \emph{kernel-calibrated surrogate}: the stochastic toy model of \cref{sec:sims} with $\lambda^2=k_u/k_d'$, $\mu^2=k_s/k_d'$, the network's own initial logits, and the same training settings (\cref{app:kernel}).
 As simpler baselines we use the bare threshold $\Lambda(N)>\Lambda_c$ of \cref{eq:kernel}, with $\Lambda_c$ from the toy model, and a deterministic mean-field version of the kernel dynamics (\cref{app:kernel}).
 None of these predictors is fitted to the network's RL outcomes.
 
@@ -51,12 +51,15 @@ Raising the temperature, which increases the initial entropy, increases collapse
 
 \paragraph{Accuracy of the parameter-free predictions.}
 We score each predictor on every condition and training-set size, counting agreement when the predicted and observed probabilities of collapse lie on the same side of $\tfrac12$.
-The surrogate agrees in $71\%$ of cases (\cref{fig:nn}d), and more often far from threshold. The two simpler predictors do worse (\cref{app:nndetails}).
+The surrogate agrees in $71\%$ of cases (\cref{fig:nn}d), and more often far from threshold. The bare threshold $\Lambda(N)>\Lambda_c$ ($58\%$) and the deterministic kernel mean-field ($63\%$) do worse (\cref{app:nndetails}).
+The surrogate's value lies in ranking rather than calibration. It separates collapsing from stable runs well (area under the ROC curve $0.87$) and has a lower Brier score than either fixed-answer predictor, but on average it predicts collapse far less often than it occurs (\cref{app:nndetails}).
 The errors are almost all in one direction: the real network collapses more often than its initial kernel predicts.
-Most misses are antisymmetric networks with weak added coupling, which sit close to threshold, and confident plain networks at $\tau=1$, whose initial logits place almost no problems inside the unstable window.
+Most misses are antisymmetric networks with weak added coupling, which sit close to threshold, and confident plain networks at $\tau=1$, whose initial logits place almost no problems inside the unstable window. The plain base-120 network at $\tau=1$ has initial $G=0.000$, yet $17$ of its $42$ runs collapse (\cref{tab:conditions}).
+Predictions from the initial kernel are therefore not sufficient to establish a reliable stability boundary in a real network.
 
-The bias has a simple cause: the kernel changes during training, which breaks the fixed-kernel assumption of \cref{sec:kernel}. Feature learning quickly erodes the protective coupling, so the initial kernel underestimates the risk of collapse (\cref{app:kerneldrift}).
+One important source of these errors is that the kernel changes during training, which breaks the fixed-kernel assumption of \cref{sec:kernel}. In some networks feature learning quickly erodes the protective coupling relative to the shared one, and in others the self-kernel grows by orders of magnitude (\cref{app:kerneldrift}). Kernel drift is small in the plain networks, however, and does not account for their misses.
 
 \paragraph{Marginal-entropy remedy.}
 The bonus of \cref{sec:remedy} also prevents collapse in the network, but it does not rescue accuracy (\cref{fig:nnremedy}, \cref{app:nnremedy}).
 The bonus penalizes only an imbalance of the pooled answers, so it damps only the uniform mode. The kernel has other collective modes that move many problems at once while keeping the answers balanced, and that are unrelated to the current predictions. \Cref{prop:instab} applies to each of them, so once the uniform mode is damped, the strongest of them takes over. The network still ends confident and balanced, but its answers follow a pattern set by its own features rather than by the task, and accuracy falls to chance.
+Removing the imbalance of the answer marginal is therefore not the same as preventing collective collapse: the bonus stabilizes the uniform mode, but a task-unrelated collective mode can still take over.

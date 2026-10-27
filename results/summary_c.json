@@ -6,6 +6,52 @@
  "kmf_agree": 0.6298701298701299,
  "lambda_threshold_agree": 0.5844155844155844,
  "mean_abs_err": 0.2819264069264069,
+ "scores": {
+  "base_rate": {
+   "brier": 0.20546255692359586,
+   "run_agree": 0.711038961038961
+  },
+  "mean_surrogate": 0.46374458874458874,
+  "surrogate": {
+   "brier": 0.23502886002886006,
+   "run_agree": 0.7023809523809523,
+   "auc": 0.8724625040617037
+  },
+  "kernel_meanfield": {
+   "brier": 0.37987012987012986,
+   "run_agree": 0.6201298701298701
+  },
+  "lambda_threshold": {
+   "brier": 0.41883116883116883,
+   "run_agree": 0.5811688311688312
+  },
+  "always_collapse": {
+   "brier": 0.288961038961039,
+   "run_agree": 0.711038961038961
+  },
+  "always_stable": {
+   "brier": 0.711038961038961,
+   "run_agree": 0.288961038961039
+  },
+  "cell_agree": {
+   "surrogate": 0.7142857142857143,
+   "always_collapse": 0.7272727272727273
+  },
+  "cell_agree_ci95": {
+   "surrogate": [
+    0.564935064935065,
+    0.8571428571428571
+   ],
+   "always_collapse": [
+    0.5582792207792208,
+    0.8831168831168831
+   ],
+   "difference": [
+    -0.2532467532467533,
+    0.24675324675324672
+   ]
+  }
+ },
  "cells": [
   {
    "cond": [
