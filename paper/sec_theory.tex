@@ -185,7 +185,7 @@ We add to each minibatch objective a marginal-entropy bonus $\beta\,H(\bar p)$ w
 \begin{equation*}
   H(q)=-q\ln q-(1-q)\ln(1-q).
 \end{equation*}
-The majority-vote reward lowers the entropy of each problem's answer, and the bonus raises the entropy of the answers pooled across problems, in the spirit of mutual-information objectives for unsupervised classification \citep{bridle1992phantom,krause2010rim}.
+The majority-vote reward lowers the entropy of each problem's answer, and the bonus raises the entropy of the answers pooled across problems, in the spirit of mutual-information objectives for unsupervised classification \citep{bridle1991phantom,gomes2010rim}.
 When answers are balanced, $\bar p=\tfrac12$ is the maximum of $H$, so the bonus exerts no force and per-problem sharpening is unaffected.
 A common shift moves every $p_i$ the same way and pushes $\bar p$ away from $\tfrac12$, and the bonus pushes back.
 Near the symmetric state it contributes $-4\beta\langle p(1-p)\rangle^2$ to the growth rate of the shared mode (\cref{app:remedy}), so the shared mode is damped when

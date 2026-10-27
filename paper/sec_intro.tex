@@ -11,7 +11,7 @@ This has motivated \emph{label-free} or \emph{unsupervised} RLVR, in which the m
 The most common choice is majority voting \citep{ttrl,shafayat2025srt}. The answer that appears most often among the $K$ samples is treated as a pseudo-label, and samples that agree with it are rewarded.
 Related intrinsic signals include self-certainty and entropy \citep{intuitor,agarwal2025entmin,rent,empo}.
 These methods often help early in training, but with prolonged training they \emph{collapse}.
-The self-assessed reward keeps rising while true accuracy falls, and in the extreme the model emits the same answer for every problem \citep{shafayat2025srt,he2026urlvr}.
+The self-assessed reward keeps rising while true accuracy falls \citep{shafayat2025srt,he2026urlvr}, and in the extreme the model emits the same answer for every problem \citep{shafayat2025srt}.
 
 A striking feature of this collapse is its dependence on the \emph{number of training problems}.
 In a systematic study, \citet{he2026urlvr} found that training on $\le128$ problems was stable, whereas ``larger datasets ($\ge512$) consistently exhibit reward hacking''.
@@ -43,7 +43,7 @@ We test the resulting predictions in stochastic simulations (\cref{sec:sims}, wi
 \paragraph{Label-free RL for reasoning.}
 Test-time reinforcement learning (TTRL; \citealp{ttrl}) uses majority-vote pseudo-rewards on unlabeled test problems.
 Self-training with majority votes \citep{shafayat2025srt}, self-certainty \citep{intuitor}, entropy minimization \citep{agarwal2025entmin,rent} and semantic-entropy objectives \citep{empo} are close relatives. Even random or spurious rewards can help some base models \citep{spurious}.
-Several works report eventual reward hacking or collapse and propose remedies such as cross-view or cross-model rewarding \citep{corewarding}.
+Several works report eventual reward hacking or collapse and propose remedies such as cross-view rewarding \citep{corewarding}.
 \citet{he2026urlvr} study unsupervised RLVR systematically. They show that intrinsic methods converge toward sharpening the model's initial distribution, that collapse depends on dataset size, and that base models with higher initial entropy fare worse.
 We supply a mechanism for the dataset-size dependence and a quantitative criterion.
 
