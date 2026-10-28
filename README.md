@@ -1,7 +1,8 @@
 # Collective collapse in unsupervised (majority-vote) RLVR
 
 Code, results and paper for *Collective Dynamics of Self-Reinforcement: How Cross-Task
-Coupling Drives Policy Collapse in Unsupervised RLVR*.
+Coupling Drives Policy Collapse in Unsupervised RLVR*
+([arXiv:2610.37553](https://arxiv.org/abs/2610.37553)).
 
 Label-free RLVR with majority-vote rewards collapses only when the training set has
 many problems. We explain this as an instability of shared parameter directions. While
@@ -95,12 +96,16 @@ Build with `paper/build.sh`. On a minimal TinyTeX that lacks `grfext.sty`, set
 ## Citation
 
 ```bibtex
-@misc{ding2026collective,
-  title  = {Collective Dynamics of Self-Reinforcement: How Cross-Task Coupling
-            Drives Policy Collapse in Unsupervised {RLVR}},
-  author = {Ding, Peize},
-  year   = {2026},
-  note   = {arXiv identifier to be added}
+@article{ding2026collective,
+  title         = {Collective Dynamics of Self-Reinforcement: How Cross-Task Coupling
+                   Drives Policy Collapse in Unsupervised {RLVR}},
+  author        = {Ding, Peize},
+  journal       = {arXiv preprint arXiv:2610.37553},
+  year          = {2026},
+  eprint        = {2610.37553},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.LG},
+  url           = {https://arxiv.org/abs/2610.37553}
 }
 ```
 
